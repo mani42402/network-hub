@@ -39,20 +39,21 @@ updates:
     commit-message:
       prefix: "ci"
 
-  # Enabled from WP-M0.12 / P2.6, when these manifests exist. Dependabot
-  # ignores directories with no manifest, so listing them early is harmless.
-  - package-ecosystem: pub
-    directory: /apps/desktop
-    schedule:
-      interval: monthly
-    labels: [dependencies, flutter]
-    commit-message:
-      prefix: "build"
-
-  - package-ecosystem: npm
-    directory: /sdk/plugin-ts
-    schedule:
-      interval: monthly
-    labels: [dependencies, typescript]
-    commit-message:
-      prefix: "build"
+  # Re-enable from WP-M0.12 (pub) and P2.6 (npm), when these manifests exist.
+  # Dependabot ERRORS on a directory with no manifest, so they stay commented
+  # out until then rather than reddening the dashboard every week.
+  #   - package-ecosystem: pub
+  #     directory: /apps/desktop
+  #     schedule:
+  #       interval: monthly
+  #     labels: [dependencies, flutter]
+  #     commit-message:
+  #       prefix: "build"
+  #
+  #   - package-ecosystem: npm
+  #     directory: /sdk/plugin-ts
+  #     schedule:
+  #       interval: monthly
+  #     labels: [dependencies, typescript]
+  #     commit-message:
+  #       prefix: "build"
