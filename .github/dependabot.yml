@@ -1,0 +1,58 @@
+version: 2
+
+# Dependency updates. For a privileged daemon the dependency tree is part of the
+# attack surface, so updates arrive as reviewable pull requests on a schedule
+# rather than as an annual scramble when an advisory lands.
+#
+# `cargo deny check advisories` runs nightly (nightly.yml) and catches CVEs
+# between these updates.
+
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    labels: [dependencies, rust]
+    commit-message:
+      prefix: "build"
+      include: scope
+    groups:
+      # Patch bumps are usually uninteresting individually and noisy in bulk.
+      patch-updates:
+        update-types: [patch]
+      # Keep the async runtime and its ecosystem moving together; splitting
+      # them across pull requests produces version conflicts that look like
+      # bugs.
+      tokio-stack:
+        patterns: ["tokio", "tokio-*", "tower", "tower-*", "hyper", "hyper-*"]
+
+  # Workflow actions are executable code in our build pipeline. They get the
+  # same treatment as any other dependency.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "ci"
+
+  # Enabled from WP-M0.12 / P2.6, when these manifests exist. Dependabot
+  # ignores directories with no manifest, so listing them early is harmless.
+  - package-ecosystem: pub
+    directory: /apps/desktop
+    schedule:
+      interval: monthly
+    labels: [dependencies, flutter]
+    commit-message:
+      prefix: "build"
+
+  - package-ecosystem: npm
+    directory: /sdk/plugin-ts
+    schedule:
+      interval: monthly
+    labels: [dependencies, typescript]
+    commit-message:
+      prefix: "build"

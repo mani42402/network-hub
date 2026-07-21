@@ -70,6 +70,19 @@ if (Get-Command buf -ErrorAction SilentlyContinue) {
     Write-Warn "Install from https://github.com/bufbuild/buf/releases"
 }
 
+# --- actionlint ------------------------------------------------------------
+# Workflow files are code; actionlint catches expression and shell bugs that
+# would otherwise appear as a failing CI job at an inconvenient moment.
+if (Get-Command actionlint -ErrorAction SilentlyContinue) {
+    Write-Ok "actionlint present"
+} elseif (Get-Command go -ErrorAction SilentlyContinue) {
+    Write-Info "Installing actionlint"
+    go install github.com/rhysd/actionlint/cmd/actionlint@latest
+} else {
+    Write-Warn "actionlint not found - install Go, or download a release from"
+    Write-Warn "https://github.com/rhysd/actionlint/releases"
+}
+
 # --- Cargo tooling ---------------------------------------------------------
 Write-Info "Installing cargo tooling"
 if (Get-Command cargo-deny -ErrorAction SilentlyContinue) {

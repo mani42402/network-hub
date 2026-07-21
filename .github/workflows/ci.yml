@@ -1,0 +1,269 @@
+name: CI
+
+# Runs on every pull request and every push to main. This is the gate that makes
+# "verified" mean something: NetworkHub ships on three operating systems, so
+# "it works on my machine" is a statement about one third of the product.
+#
+# TODO(WP-M3.5): pin third-party actions to commit digests rather than tags.
+# A tag is mutable; for a project that ships a privileged daemon, the build
+# pipeline is part of the supply chain (ARCHITECTURE.md §10.2).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: no job here needs write access to anything.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the previous run. Saves runner minutes
+# and stops reviewers reading results from a superseded commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Incremental compilation has no benefit in CI and pollutes the cache.
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Repository-wide invariants. Single platform, runs first, fails fast — there
+  # is no point burning three runners on a branch with a formatting error.
+  # ---------------------------------------------------------------------------
+  invariants:
+    name: Invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins the compiler; this materialises it and proves
+      # the pin resolves on a clean machine.
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: invariants
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Architecture layer rules
+        run: cargo xtask check-layers
+
+      # Tests the test: proves check-layers actually rejects forbidden edges.
+      # Without this, the layer rules could silently decay into a no-op.
+      - name: Layer enforcement is real
+        run: tools/verify-layer-enforcement.sh
+
+      # Several jobs below skip until the work package that produces their
+      # inputs lands. A conditional stuck on "skip" is how a pipeline stays
+      # green while testing nothing, so the detection is verified in both
+      # directions rather than trusted.
+      - name: CI skip conditions are correct
+        run: tools/verify-ci-skip-logic.sh
+
+      # Workflow files are code. actionlint catches expression syntax errors and
+      # shell bugs that would otherwise only surface as a failing job at the
+      # worst moment.
+      # TODO(WP-M3.5): pin to a release version alongside the action digests.
+      - name: Lint workflows
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          "$(go env GOPATH)/bin/actionlint" .github/workflows/*.yml
+
+      # Our shell scripts install services, mutate firewall state, and clean up
+      # after tests. A quoting bug in one of those is not a style problem.
+      - name: Lint shell scripts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          shellcheck tools/*.sh
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      # Licence firewall + advisory database. A GPL dependency fails the build:
+      # OpenVPN's process isolation (ADR-0008) depends on this staying true.
+      - name: Licences and advisories
+        run: cargo deny check
+
+  # ---------------------------------------------------------------------------
+  # The real matrix. Every platform we ship, every commit.
+  # ---------------------------------------------------------------------------
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      # Never cancel siblings on first failure: when something breaks on
+      # Windows we want to know whether Linux and macOS broke the same way.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux (x86_64)
+            os: ubuntu-latest
+          - name: Windows (x86_64)
+            os: windows-latest
+          - name: macOS (aarch64)
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.os }}
+
+      - name: Build
+        run: cargo build --workspace --all-targets
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  # ---------------------------------------------------------------------------
+  # Raspberry Pi is a first-class target (headless deployments, ARCHITECTURE.md
+  # §3.2), so aarch64 must at least compile on every commit. Runtime verification
+  # on real Pi hardware happens in the M2 hardware lab campaign.
+  # ---------------------------------------------------------------------------
+  cross-aarch64:
+    name: Cross-build (Linux aarch64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned toolchain and aarch64 target
+        run: |
+          rustup show active-toolchain
+          rustup target add aarch64-unknown-linux-gnu
+
+      - name: Install cross-linker
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: cross-aarch64
+
+      - name: Build
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: cargo build --workspace --target aarch64-unknown-linux-gnu
+
+  # ---------------------------------------------------------------------------
+  # Wire contracts. Breaking a proto breaks every client on every platform, so
+  # backward compatibility is checked mechanically rather than in review.
+  # Skips cleanly until WP-M0.2 adds the first .proto file.
+  # ---------------------------------------------------------------------------
+  proto:
+    name: Protobuf contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # buf needs history to diff against the base branch.
+          fetch-depth: 0
+
+      - name: Check for proto sources
+        id: check
+        run: |
+          if find proto -name '*.proto' -print -quit | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No .proto files yet — contracts land in WP-M0.2."
+          fi
+
+      - uses: bufbuild/buf-setup-action@v1
+        if: steps.check.outputs.present == 'true'
+
+      - name: Lint
+        if: steps.check.outputs.present == 'true'
+        run: buf lint
+
+      - name: Breaking-change check against main
+        if: steps.check.outputs.present == 'true' && github.event_name == 'pull_request'
+        run: buf breaking --against ".git#branch=origin/main"
+
+  # ---------------------------------------------------------------------------
+  # Desktop UI. Skips cleanly until WP-M0.12 creates the Flutter app.
+  # ---------------------------------------------------------------------------
+  desktop:
+    name: Desktop UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for a Flutter app
+        id: check
+        run: |
+          if [ -f apps/desktop/pubspec.yaml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No Flutter app yet — the UI lands in WP-M0.12."
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.check.outputs.present == 'true'
+        with:
+          channel: stable
+
+      - name: Analyze
+        if: steps.check.outputs.present == 'true'
+        working-directory: apps/desktop
+        run: |
+          flutter pub get
+          dart format --set-exit-if-changed .
+          flutter analyze --fatal-infos
+
+      - name: Test
+        if: steps.check.outputs.present == 'true'
+        working-directory: apps/desktop
+        run: flutter test
+
+  # ---------------------------------------------------------------------------
+  # Single required status check for branch protection. Depending on this one
+  # job means adding a matrix entry does not require reconfiguring the branch
+  # rules — and a skipped or cancelled dependency correctly fails the gate.
+  # ---------------------------------------------------------------------------
+  ci-success:
+    name: CI
+    if: always()
+    needs: [invariants, test, cross-aarch64, proto, desktop]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Expression output is passed via `env` rather than interpolated into the
+      # command line. Here the values are trusted job results, but interpolating
+      # expressions directly into `run` is the root of GitHub Actions script
+      # injection, and this pipeline will eventually hold signing keys.
+      - name: Verify all jobs succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: $RESULTS"
+          for r in $RESULTS; do
+            if [ "$r" != "success" ]; then
+              echo "::error::A required CI job did not succeed (saw '$r')."
+              exit 1
+            fi
+          done
+          echo "All CI jobs succeeded."

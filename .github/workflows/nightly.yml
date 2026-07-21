@@ -1,0 +1,207 @@
+name: Nightly
+
+# Work that is too slow for the pull-request gate but too important to run only
+# before a release: fuzzing, soak tests, and packaged-artifact end-to-end runs.
+#
+# Every job here is currently a wired skeleton that skips cleanly. They fill in
+# as the work packages that produce their inputs land, so the schedule, the
+# notification path, and the job structure are proven long before they carry
+# anything valuable.
+
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Fuzzing. Every network-facing parser ships with a fuzz target in the same
+  # pull request (CONTRIBUTING.md rule 4); this is where those targets earn
+  # their keep. Short runs nightly build a corpus over time.
+  # First real targets: DHCP and DNS packet parsers (WP-M2.4, WP-M2.5) and the
+  # .ovpn profile sanitiser (WP-M1.2).
+  # ---------------------------------------------------------------------------
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for fuzz targets
+        id: check
+        run: |
+          if find . -path ./target -prune -o -name 'fuzz_targets' -type d -print -quit | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No fuzz targets yet — the first arrive with WP-M1.2 (profile import)."
+          fi
+
+      - name: Install nightly toolchain and cargo-fuzz
+        if: steps.check.outputs.present == 'true'
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install cargo-fuzz --locked
+
+      - name: Run each target
+        if: steps.check.outputs.present == 'true'
+        run: |
+          for t in $(cargo fuzz list); do
+            echo "::group::fuzzing $t"
+            cargo +nightly fuzz run "$t" -- -max_total_time=300
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------------------
+  # Linux network-namespace end-to-end suite. The crown jewel of the test
+  # strategy (ARCHITECTURE.md §14.1): with mac80211_hwsim providing virtual
+  # radios, the full hotspot → DHCP → DNS → device-control path runs without
+  # any hardware. Harness lands in WP-0.5, real scenarios from WP-M2.11.
+  # ---------------------------------------------------------------------------
+  netns-e2e:
+    name: netns end-to-end (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the netns harness
+        id: check
+        run: |
+          if [ -f tests/netns/run.sh ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No netns harness yet — lands in WP-0.5."
+          fi
+
+      - name: Install networking tools
+        if: steps.check.outputs.present == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y nftables iproute2 iw hostapd
+          sudo modprobe mac80211_hwsim radios=4 || \
+            echo "::warning::mac80211_hwsim unavailable on this runner; Wi-Fi scenarios will skip."
+
+      - name: Run suite
+        if: steps.check.outputs.present == 'true'
+        run: sudo tests/netns/run.sh
+
+  # ---------------------------------------------------------------------------
+  # Fault injection against the failure catalog (ARCHITECTURE.md §11). Kills the
+  # daemon at randomised points inside every mutating flow and asserts the
+  # fail-open invariant (ADR-0005): the system returns to the desired state or
+  # the pre-NetworkHub state, never a third thing. Harness lands in WP-M0.14.
+  # ---------------------------------------------------------------------------
+  fault-injection:
+    name: Fault injection
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the fault harness
+        id: check
+        run: |
+          if [ -f tests/fault/run.sh ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No fault harness yet — lands in WP-M0.14."
+          fi
+
+      - name: Run suite
+        if: steps.check.outputs.present == 'true'
+        run: sudo tests/fault/run.sh
+
+  # ---------------------------------------------------------------------------
+  # The uninstall contract (ADR-0014, ARCHITECTURE.md §13.5): install on a clean
+  # machine, use it, uninstall, and diff the system state. A machine after
+  # install-use-uninstall must be indistinguishable from before.
+  #
+  # Hosted runners are ephemeral, which is close enough to a clean VM for the
+  # install and diff. Snapshot-revert VM testing on the real machines is a
+  # separate, operator-run protocol (WP-0.5).
+  # ---------------------------------------------------------------------------
+  uninstall-contract:
+    name: Uninstall diff-clean (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the state differ
+        id: check
+        shell: bash
+        run: |
+          if [ -f tests/e2e/uninstall-contract.sh ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No state differ yet — lands in WP-0.5, exercised from WP-M0.13."
+          fi
+
+      - name: Snapshot, install, use, uninstall, diff
+        if: steps.check.outputs.present == 'true'
+        shell: bash
+        run: tests/e2e/uninstall-contract.sh
+
+  # ---------------------------------------------------------------------------
+  # Long-running stability. Leaks in a daemon that runs for months are found by
+  # soaking, not by unit tests. Tracks RSS, file descriptors, and task counts
+  # against a flat-line expectation. First real run: WP-M1.10 (72h with a
+  # deliberately flapping upstream).
+  # ---------------------------------------------------------------------------
+  soak:
+    name: Soak
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the soak harness
+        id: check
+        run: |
+          if [ -f tests/e2e/soak.sh ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No soak harness yet — lands in WP-M1.10."
+          fi
+
+      - name: Run
+        if: steps.check.outputs.present == 'true'
+        run: tests/e2e/soak.sh --duration 90m
+
+  # ---------------------------------------------------------------------------
+  # Advisory database moves even when our code does not: a dependency that was
+  # clean yesterday can have a CVE today. This is why it runs nightly as well as
+  # per-pull-request.
+  # ---------------------------------------------------------------------------
+  advisories:
+    name: Security advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+      - name: Check advisories
+        run: cargo deny check advisories

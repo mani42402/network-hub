@@ -20,14 +20,31 @@ The toolchain is pinned in `rust-toolchain.toml`. Do not change your system defa
 
 ```bash
 cargo fmt --all
-cargo lint                    # alias for clippy --workspace --all-targets -- -D warnings
+cargo lint                        # alias for clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo xtask check-layers      # architecture dependency rules
-cargo deny check              # licences and advisories
+cargo xtask check-layers          # architecture dependency rules
+cargo deny check                  # licences and advisories
+actionlint .github/workflows/*.yml   # only if you touched a workflow
+shellcheck tools/*.sh                # only if you touched a script
 ```
 
 CI runs exactly these on Windows, Linux, and macOS. "It works on my machine" is not a
-defence when the machine is one of three.
+defence when the machine is one of three. See [docs/ops/ci.md](docs/ops/ci.md) for what the
+pipeline does and how to reproduce a failure locally.
+
+### Guard rails that test themselves
+
+Two scripts exist to verify that our checks still check anything. Run them if you change the
+rules they cover:
+
+```bash
+tools/verify-layer-enforcement.sh   # proves check-layers rejects each forbidden edge
+tools/verify-ci-skip-logic.sh       # proves conditional CI jobs skip AND run correctly
+```
+
+Several CI jobs skip until the work package producing their inputs lands. A conditional stuck
+on "skip" is how a pipeline stays green while testing nothing — so the detection is verified
+in both directions rather than trusted.
 
 ## Engineering rules
 

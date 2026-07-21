@@ -38,7 +38,8 @@ install_packages() {
                 libnl-3-dev libnl-genl-3-dev libnl-route-3-dev \
                 nftables iproute2 iw \
                 hostapd \
-                iperf3 tcpdump
+                iperf3 tcpdump \
+                shellcheck
             ;;
         dnf)
             $SUDO dnf install -y \
@@ -47,7 +48,8 @@ install_packages() {
                 libnl3-devel \
                 nftables iproute iw \
                 hostapd \
-                iperf3 tcpdump
+                iperf3 tcpdump \
+                shellcheck
             ;;
         pacman)
             $SUDO pacman -Sy --needed --noconfirm \
@@ -56,7 +58,8 @@ install_packages() {
                 libnl \
                 nftables iproute2 iw \
                 hostapd \
-                iperf3 tcpdump
+                iperf3 tcpdump \
+                shellcheck
             ;;
         none) warn "Skipping system packages." ;;
     esac
@@ -86,6 +89,19 @@ if command -v buf >/dev/null 2>&1; then
 else
     warn "buf not found — needed from WP-M0.2 for protobuf breaking-change checks."
     warn "Install from https://github.com/bufbuild/buf/releases"
+fi
+
+# --- actionlint ------------------------------------------------------------
+# Workflow files are code; actionlint catches expression and shell bugs that
+# would otherwise appear as a failing CI job at an inconvenient moment.
+if command -v actionlint >/dev/null 2>&1; then
+    ok "actionlint present"
+elif command -v go >/dev/null 2>&1; then
+    info "Installing actionlint"
+    go install github.com/rhysd/actionlint/cmd/actionlint@latest
+else
+    warn "actionlint not found — install Go, or download a release from"
+    warn "https://github.com/rhysd/actionlint/releases"
 fi
 
 # --- Cargo tooling ---------------------------------------------------------

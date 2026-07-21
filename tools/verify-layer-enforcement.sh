@@ -11,8 +11,11 @@
 # Usage: tools/verify-layer-enforcement.sh
 set -uo pipefail
 
+# Note: `set -e` is deliberately NOT used — a failing assertion must be counted
+# and reported, not abort the run. That makes an unchecked `cd` genuinely
+# dangerous here, since the script would carry on in the wrong directory.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || { echo "cannot enter repository root: $ROOT" >&2; exit 1; }
 
 PASS=0
 FAIL=0

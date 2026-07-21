@@ -46,9 +46,22 @@ rustup show active-toolchain >/dev/null
 ok "toolchain: $(rustc --version)"
 
 # --- Build-time tools ------------------------------------------------------
-info "Installing protobuf and buf (contract generation — WP-M0.2)"
-brew list protobuf >/dev/null 2>&1 && ok "protobuf present" || brew install protobuf
-brew list buf      >/dev/null 2>&1 && ok "buf present"      || brew install buf
+brew_ensure() {
+    if brew list "$1" >/dev/null 2>&1; then
+        ok "$1 present"
+    else
+        info "Installing $1"
+        brew install "$1"
+    fi
+}
+
+info "Installing build and lint tooling"
+brew_ensure protobuf     # contract generation — WP-M0.2
+brew_ensure buf          # protobuf breaking-change checks — WP-M0.2
+# Workflow and shell files are code. These two catch expression and quoting
+# bugs that would otherwise appear as a failing CI job at an inconvenient moment.
+brew_ensure actionlint
+brew_ensure shellcheck
 
 # --- Cargo tooling ---------------------------------------------------------
 info "Installing cargo tooling"
