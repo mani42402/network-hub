@@ -70,6 +70,12 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 uuid = { version = "1", features = ["v7", "serde"] }
+# Secret memory hygiene: overwrites secret bytes on drop so VPN keys and
+# passphrases do not linger in freed memory. Backs `Secret<T>` in nh-types.
+zeroize = { version = "1", features = ["derive"] }
+# Compile-fail tests: assert that misuse (e.g. printing a Secret) does not
+# compile. A dev-dependency wherever it is used.
+trybuild = "1"
 
 # ---------------------------------------------------------------------------
 # Lints. CI runs clippy with `-D warnings`, so every "warn" below is a hard

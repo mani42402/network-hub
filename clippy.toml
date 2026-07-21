@@ -29,5 +29,6 @@ doc-valid-idents = [
     # Platform names and acronyms
     "launchd", "macOS", "IPv4", "IPv6", "DoH", "DoT", "DHCPv4", "DHCPv6",
     "WASM", "WASI", "SQLite", "gRPC", "WFP", "PF", "ICS", "OUI", "RSSI",
+    "UUIDv7", "UUIDv4",
     "..",
 ]
