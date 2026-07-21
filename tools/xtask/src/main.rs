@@ -17,9 +17,10 @@ const PAL_BACKENDS: &[&str] = &["pal-linux", "pal-windows", "pal-macos"];
 /// The only crate permitted to select a concrete PAL backend.
 const PAL_BACKEND_CONSUMER: &str = "nh-daemon";
 
-/// The only crates permitted to produce executables. `xtask` is repo tooling
-/// rather than product code, and is exempt from the product layer rules.
-const BINARY_CRATES: &[&str] = &["nh-daemon", "nh-gateway", "nh-cli", "xtask"];
+/// The only crates permitted to produce executables. `xtask` and `state-diff`
+/// are repo tooling rather than product code, and are exempt from the product
+/// layer rules.
+const BINARY_CRATES: &[&str] = &["nh-daemon", "nh-gateway", "nh-cli", "xtask", "state-diff"];
 
 /// The foundation crate: shared vocabulary, no internal dependencies at all.
 const FOUNDATION_CRATE: &str = "nh-types";
