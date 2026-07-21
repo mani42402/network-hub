@@ -1,0 +1,102 @@
+[workspace]
+resolver = "3"
+
+# Members are listed explicitly rather than globbed. The dependency rules in
+# ARCHITECTURE.md §5.1 are enforced mechanically by `cargo xtask check-layers`,
+# and an explicit list makes an accidental new crate a visible diff.
+members = [
+    # Foundation — no internal dependencies.
+    "crates/nh-types",
+    "crates/nh-proto",
+
+    # Engine.
+    "crates/nh-state",
+    "crates/nh-secrets",
+
+    # Platform Adapter Layer: traits + mock, then one backend per OS.
+    # Feature crates depend on `nh-pal` only; never on a concrete backend.
+    "crates/nh-pal",
+    "crates/nh-pal/pal-linux",
+    "crates/nh-pal/pal-windows",
+    "crates/nh-pal/pal-macos",
+
+    # Feature modules.
+    "crates/nh-firewall",
+    "crates/nh-vpn",
+    "crates/nh-hotspot",
+    "crates/nh-dhcp",
+    "crates/nh-dns",
+    "crates/nh-monitor",
+    "crates/nh-devices",
+    "crates/nh-automation",
+    "crates/nh-analytics",
+    "crates/nh-plugin-host",
+    "crates/nh-updater",
+
+    # Binaries — the only crates permitted to produce executables.
+    "crates/nh-daemon",
+    "crates/nh-gateway",
+    "crates/nh-cli",
+
+    # Repo tooling (exempt from the product layer rules).
+    "tools/xtask",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+# TODO(WP-0.1): set to the real remote once the GitHub repo exists.
+repository = "https://github.com/REPLACE-ME/networkhub"
+authors = ["NetworkHub contributors"]
+
+# ---------------------------------------------------------------------------
+# Shared dependency versions. Crates opt in with `dep.workspace = true` so the
+# whole workspace moves together — a single version bump, reviewed once.
+# ---------------------------------------------------------------------------
+[workspace.dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+uuid = { version = "1", features = ["v7", "serde"] }
+
+# ---------------------------------------------------------------------------
+# Lints. CI runs clippy with `-D warnings`, so every "warn" below is a hard
+# error in the pipeline. See CONTRIBUTING.md for the sanctioned escape hatches.
+#
+# `unsafe_code = "forbid"` is deliberate and cannot be overridden per-crate.
+# The three `pal-*` backends opt OUT of workspace lints entirely (they are the
+# designated FFI boundary) and set `deny` instead — see their manifests.
+# ---------------------------------------------------------------------------
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# A privileged daemon should not panic its way out of a bad day.
+unwrap_used = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+mem_forget = "warn"
+
+[profile.release]
+# Debug symbols are kept: crash reports from the field are worthless without
+# them, and we strip into separate symbol files at packaging time (WP-M3.2).
+debug = 1
+lto = "thin"
+codegen-units = 1
+
+[profile.dev]
+# The netns and fault-injection suites run debug builds; default opt-level 0
+# makes them slow enough to change developer behaviour, which is worse.
+opt-level = 1

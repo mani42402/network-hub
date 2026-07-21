@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# Build output
+# ---------------------------------------------------------------------------
+/target/
+**/target/
+*.pdb
+*.dSYM/
+
+# Flutter / Dart
+apps/desktop/build/
+apps/desktop/.dart_tool/
+apps/desktop/.flutter-plugins
+apps/desktop/.flutter-plugins-dependencies
+apps/desktop/ephemeral/
+.packages
+*.iml
+
+# TypeScript / Node
+node_modules/
+sdk/plugin-ts/dist/
+*.tsbuildinfo
+
+# Packaging output
+packaging/**/out/
+*.msi
+*.msix
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+
+# ---------------------------------------------------------------------------
+# Secrets and local state — nothing in here may ever be committed.
+# See SECURITY.md. CI additionally runs a secrets scanner (WP-M3.5).
+# ---------------------------------------------------------------------------
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+!tests/**/testdata/**/*.pem   # deliberately-published test fixtures only
+.env
+.env.*
+secrets/
+*.local.toml
+
+# Signing material must never be near the working tree.
+*.snk
+*.cer
+!LICENSE
+
+# Local databases and runtime artifacts
+*.db
+*.db-wal
+*.db-shm
+/run/
+/logs/
+
+# ---------------------------------------------------------------------------
+# Editor / OS
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Scratch
+/scratch/
+/tmp/

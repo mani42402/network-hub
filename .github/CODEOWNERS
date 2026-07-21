@@ -1,0 +1,44 @@
+# Code owners. GitHub requests review from these owners automatically.
+#
+# TODO(WP-0.1): replace @REPLACE-ME with the real GitHub handle(s) once the
+# remote repository exists.
+
+# Default owner for everything.
+*                               @REPLACE-ME
+
+# ---------------------------------------------------------------------------
+# High-consequence areas. ARCHITECTURE.md §17 requires a designated owner to
+# review changes here, because a mistake in any of them is expensive to undo
+# once released: wire contracts and schemas are hard to change after clients
+# exist, and the rest are security- or licence-critical.
+# ---------------------------------------------------------------------------
+
+# Wire contracts — breaking these breaks every client on every platform.
+/proto/                         @REPLACE-ME
+/crates/nh-proto/               @REPLACE-ME
+
+# Storage schema and migrations — forward-only, and users' data lives here.
+/crates/nh-state/               @REPLACE-ME
+
+# Anything that holds or handles secrets.
+/crates/nh-secrets/             @REPLACE-ME
+
+# The privilege boundary itself.
+/crates/nh-daemon/              @REPLACE-ME
+
+# Update channel — a compromise here is remote root on every install.
+/crates/nh-updater/             @REPLACE-ME
+
+# Plugin sandbox boundary.
+/crates/nh-plugin-host/         @REPLACE-ME
+
+# Licence firewall, architecture rules, and the build's trust anchors.
+/deny.toml                      @REPLACE-ME
+/tools/xtask/                   @REPLACE-ME
+/rust-toolchain.toml            @REPLACE-ME
+/.github/workflows/             @REPLACE-ME
+
+# Architecture and security documents.
+/docs/architecture/             @REPLACE-ME
+/docs/adr/                      @REPLACE-ME
+/SECURITY.md                    @REPLACE-ME

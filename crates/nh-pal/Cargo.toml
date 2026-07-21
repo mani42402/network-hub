@@ -1,0 +1,15 @@
+[package]
+name = "nh-pal"
+description = "Platform Adapter Layer trait definitions plus the mock backend used by tests (AD-7)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]

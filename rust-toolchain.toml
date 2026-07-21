@@ -1,0 +1,7 @@
+[toolchain]
+# Pinned so that every machine and every CI runner compiles with the same
+# compiler. Bumping this is a reviewed change, not a drive-by: a new toolchain
+# can change lint behaviour and therefore break CI for everyone at once.
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

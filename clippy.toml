@@ -1,0 +1,33 @@
+# Anything that touches the network gets a hard cap on how much it will read or
+# allocate before it decides the peer is hostile (ARCHITECTURE.md §10.7).
+# These thresholds are advisory nudges; the real limits live in the parsers.
+
+# Flag functions that take a lot of stack — the daemon runs with modest stacks
+# in some service contexts.
+too-large-for-stack = 4096
+
+# Public types that are large enough to want boxing.
+enum-variant-size-threshold = 512
+
+# Keep argument lists honest; past this, use a struct.
+too-many-arguments-threshold = 7
+
+# Documentation lint: proper nouns that read as prose, not code. Without this,
+# every mention of an OS framework in a doc comment demands backticks.
+# The trailing ".." appends to clippy's default list rather than replacing it.
+doc-valid-idents = [
+    # Product and protocols
+    "NetworkHub", "WireGuard", "OpenVPN", "IKEv2", "L2TP", "IPsec",
+    # Apple frameworks
+    "SystemConfiguration", "NetworkExtension", "CoreWLAN", "SMAppService",
+    "LaunchAgents", "LaunchDaemons",
+    # Windows APIs
+    "NetworkOperatorTetheringManager", "WinRT", "IPHelper",
+    # Linux stack
+    "nftables", "iptables", "hostapd", "NetworkManager", "dnsmasq",
+    "systemd", "wpa_supplicant", "netlink",
+    # Platform names and acronyms
+    "launchd", "macOS", "IPv4", "IPv6", "DoH", "DoT", "DHCPv4", "DHCPv6",
+    "WASM", "WASI", "SQLite", "gRPC", "WFP", "PF", "ICS", "OUI", "RSSI",
+    "..",
+]

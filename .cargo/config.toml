@@ -1,0 +1,6 @@
+[alias]
+xtask = "run --quiet --package xtask --"
+
+# Convenience aggregates used by CI and by humans; keep these two in sync with
+# .github/workflows/ci.yml so "it passed locally" means something.
+lint = "clippy --workspace --all-targets --all-features -- -D warnings"
