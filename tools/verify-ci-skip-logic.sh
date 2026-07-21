@@ -49,10 +49,10 @@ touch_temp() {
 # its harness, move it from the "not yet present" group to here.
 echo "Permanent fixtures — their jobs should RUN:"
 check "netns harness" true netns_present
+check "proto"         true proto_present
 
 echo
 echo "Not-yet-present harnesses — their jobs should SKIP today:"
-check "proto"             false proto_present
 check "fuzz targets"      false fuzz_present
 check "flutter app"       false flutter_present
 check "fault harness"     false fault_present
@@ -61,14 +61,12 @@ check "uninstall harness" false uninst_present
 
 echo
 echo "With inputs present — every job should RUN:"
-mkdir -p proto/networkhub/v1 apps/desktop tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
-touch_temp proto/networkhub/v1/_probe.proto
+mkdir -p apps/desktop tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
 touch_temp apps/desktop/pubspec.yaml
 touch_temp tests/fault/run.sh
 touch_temp tests/e2e/soak.sh
 touch_temp tests/e2e/uninstall-contract.sh
 
-check "proto"             true proto_present
 check "fuzz targets"      true fuzz_present
 check "flutter app"       true flutter_present
 check "fault harness"     true fault_present
@@ -77,12 +75,11 @@ check "uninstall harness" true uninst_present
 
 cleanup
 rmdir crates/nh-dns/fuzz/fuzz_targets crates/nh-dns/fuzz 2>/dev/null || true
-rmdir proto/networkhub/v1 proto/networkhub 2>/dev/null || true
 
 echo
 echo "Back to clean — should SKIP again:"
-check "proto"        false proto_present
-check "fuzz targets" false fuzz_present
+check "fuzz targets"  false fuzz_present
+check "fault harness" false fault_present
 
 echo
 echo "skip logic: $PASS passed, $FAIL failed"
