@@ -1,0 +1,19 @@
+[package]
+name = "spike-c-helper"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# No dependencies on purpose. This spike answers a lifecycle question — does a
+# privileged helper run under launchd, survive reboot, and uninstall cleanly —
+# and the standard library's UnixListener is enough to demonstrate it. Fewer
+# moving parts means the spike tests launchd, not a crate.
+[dependencies]
+
+[[bin]]
+name = "spike-c-helper"
+path = "src/helper.rs"
+
+[[bin]]
+name = "spike-c-probe"
+path = "src/probe.rs"

@@ -1,0 +1,24 @@
+[package]
+name = "spike-b-service"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# windows-service handles the SCM integration (install, start/stop dispatch,
+# recovery). windows-sys covers the named-pipe SDDL and client-token query that
+# windows-service does not. Both are the crates the real pal-windows will use.
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.8"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_System_Pipes",
+    "Win32_System_IO",          # OVERLAPPED, referenced by ConnectNamedPipe
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem", # PIPE_ACCESS_DUPLEX lives here, not in Pipes
+] }
+
+[[bin]]
+name = "spike-b-service"
+path = "src/main.rs"

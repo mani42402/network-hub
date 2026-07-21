@@ -1,0 +1,22 @@
+[Unit]
+Description=NetworkHub SPIKE-D boot-time deadman cleanup (F-2 safety net)
+Documentation=https://github.com/REPLACE-ME/networkhub
+DefaultDependencies=no
+# Run early, before networking is brought up, so orphaned network state from a
+# previous boot is reclaimed before anything can depend on it.
+After=local-fs.target
+Before=network-pre.target networkhub-spike-d.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/local/libexec/networkhub-spike-d-cleanup
+
+# The cleanup itself needs to touch /run and, in the real product, the firewall.
+# It is intentionally less sandboxed than the daemon because reclaiming orphaned
+# OS state is exactly what it exists to do.
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

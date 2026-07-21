@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon definition for the SPIKE-C helper.
+
+  This is what SMAppService installs under the hood for a signed app: a
+  LaunchDaemon plist that launchd loads at boot, as root, before any login.
+  The real NetworkHub helper ships this shape (ARCHITECTURE.md §13.3), with the
+  label and paths finalised.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.networkhub.spike-c</string>
+
+    <!-- Absolute path; launchd has no working directory or PATH to rely on. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/libexec/networkhub-spike-c-helper</string>
+    </array>
+
+    <!-- Start at load and keep it running: this is how the daemon survives a
+         crash. launchd restarts it, throttled to once per 10s. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Run as root explicitly. A LaunchDaemon defaults to root, but being
+         explicit documents intent and survives copy-paste into a context where
+         it matters. -->
+    <key>UserName</key>
+    <string>root</string>
+
+    <!-- Logs to a spike-specific path so cleanup is unambiguous. -->
+    <key>StandardOutPath</key>
+    <string>/var/log/networkhub-spike-c.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/networkhub-spike-c.log</string>
+
+    <!-- launchd's process type hint; Background is correct for a daemon. -->
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

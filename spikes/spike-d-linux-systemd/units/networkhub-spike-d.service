@@ -1,0 +1,41 @@
+[Unit]
+Description=NetworkHub SPIKE-D daemon (privilege + hardening lifecycle test)
+Documentation=https://github.com/REPLACE-ME/networkhub
+# Order after the cleanup oneshot so orphaned state is reclaimed before we start.
+After=network.target networkhub-spike-d-cleanup.service
+Wants=networkhub-spike-d-cleanup.service
+
+[Service]
+Type=notify
+ExecStart=/usr/local/libexec/networkhub-spike-d-daemon
+Restart=on-failure
+RestartSec=2
+
+# --- Hardening (ARCHITECTURE.md §10.6) ------------------------------------
+# The real daemon needs CAP_NET_ADMIN and friends; this spike needs none, so it
+# is locked down hard to prove the sandbox does not break basic operation.
+# SystemCallFilter is deliberately omitted here — a wrong seccomp allowlist is an
+# outage, and it is scheduled as its own hardening milestone (M-H1), not baked in
+# before the syscall surface is known.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+# ProtectSystem=strict makes the whole filesystem read-only except these. The
+# daemon writes its socket and state tag under /run.
+RuntimeDirectory=networkhub-spike-d
+ReadWritePaths=/run
+
+[Install]
+WantedBy=multi-user.target

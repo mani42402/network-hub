@@ -1,0 +1,17 @@
+[package]
+name = "spike-d-helper"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Standard library only — this spike tests systemd, sd_notify readiness, and the
+# boot-cleanup pattern, not a dependency stack.
+[dependencies]
+
+[[bin]]
+name = "spike-d-daemon"
+path = "src/daemon.rs"
+
+[[bin]]
+name = "spike-d-cleanup"
+path = "src/cleanup.rs"
