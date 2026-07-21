@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package spike.v1;
+
+// Minimal surface for SPIKE-A. The question is not "can gRPC work" — it is
+// whether a Dart client can speak gRPC over a Unix domain socket or a Windows
+// named pipe, with the server able to identify the calling process.
+service SpikeService {
+  // Unary: proves the basic round trip and returns what the server learned
+  // about the caller from the operating system.
+  rpc Echo(EchoRequest) returns (EchoResponse);
+
+  // Server streaming: the daemon pushes live metrics and device events, so a
+  // transport that cannot stream is useless to us regardless of how well it
+  // handles unary calls.
+  rpc Ticks(TicksRequest) returns (stream Tick);
+}
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+  // Identity of the calling process as reported by the OS, not as claimed by
+  // the client. This is the authentication mechanism in ADR-0002.
+  PeerIdentity peer = 2;
+}
+
+message PeerIdentity {
+  uint32 uid = 1;
+  uint32 gid = 2;
+  int64 pid = 3;
+  // Which transport actually carried this call: "uds" or "named-pipe".
+  string transport = 4;
+  // Set when the platform cannot report some field (macOS does not give a pid
+  // through LOCAL_PEERCRED on all versions).
+  string notes = 5;
+}
+
+message TicksRequest {
+  uint32 count = 1;
+  // Bytes of filler per message, to measure throughput at a realistic payload
+  // size rather than for empty frames.
+  uint32 payload_bytes = 2;
+}
+
+message Tick {
+  uint64 seq = 1;
+  uint64 unix_micros = 2;
+  bytes payload = 3;
+}

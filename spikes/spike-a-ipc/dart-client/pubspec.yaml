@@ -1,0 +1,10 @@
+name: spike_a_client
+description: SPIKE-A - can Dart speak gRPC over a Unix socket or named pipe?
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+dependencies:
+  ffi: ^2.2.0
+  grpc: ^5.1.0
+  protobuf: ^6.0.0

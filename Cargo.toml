@@ -42,6 +42,11 @@ members = [
     "tools/xtask",
 ]
 
+# Phase 0 spikes are deliberately throwaway: they answer a question and are then
+# deleted or promoted. Keeping them out of the workspace means they cannot
+# accumulate dependencies, trip the layer rules, or slow the main build.
+exclude = ["spikes"]
+
 [workspace.package]
 version = "0.0.0"
 edition = "2024"

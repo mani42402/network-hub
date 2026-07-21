@@ -74,3 +74,9 @@ desktop.ini
 # Scratch
 /scratch/
 /tmp/
+
+# Spike build artifacts (spikes are throwaway; their outputs are never tracked)
+spikes/**/target/
+spikes/**/.dart_tool/
+spikes/**/pubspec.lock
+spikes/**/generated/
