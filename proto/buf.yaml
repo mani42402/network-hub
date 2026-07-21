@@ -1,0 +1,32 @@
+# buf module configuration for the NetworkHub API.
+#
+# `buf lint` keeps the contracts stylistically consistent; `buf breaking`
+# (run in CI against main) enforces the additive-only evolution rule for v1
+# (ADR-0013), so a change that would break existing clients fails the build
+# instead of shipping.
+version: v2
+
+modules:
+  - path: .
+
+lint:
+  use:
+    - STANDARD
+  except:
+    # Our package is networkhub.v1; buf's default wants the version suffix on
+    # the directory too, which we already have (networkhub/v1). This rule fights
+    # our layout without adding value.
+    - PACKAGE_DIRECTORY_MATCH
+    # Streamed responses carry domain-named items (StreamMessage, ThroughputSample)
+    # rather than a generic {Rpc}Response. This API is streaming-heavy — events,
+    # metrics, device and VPN updates — and the item names are meaningful. Unary
+    # responses still follow the standard name (GetVersionResponse, etc.).
+    - RPC_RESPONSE_STANDARD_NAME
+  # Enum values are prefixed with their type name (SERVING_STATUS_*), which is
+  # the STANDARD rule; we keep it.
+
+breaking:
+  use:
+    - FILE
+  # Deleting or renumbering a field, changing a type, or removing an RPC all
+  # count as breaking and are rejected against the main branch.

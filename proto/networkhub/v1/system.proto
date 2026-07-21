@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package networkhub.v1;
+
+import "networkhub/v1/common.proto";
+
+// System-level queries: version negotiation, health, and the capability matrix
+// (AD-6). This is the first service any client calls — a client checks version
+// compatibility and reads capabilities before rendering anything.
+service SystemService {
+  // Returns daemon and API version information, so a client can detect a
+  // version mismatch and show an "update the app / update the service" screen
+  // rather than behaving undefined (ADR-0013).
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+
+  // Returns a point-in-time health summary of the daemon and its modules.
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+
+  // Returns the full capability matrix for this machine (AD-6). The UI renders
+  // features from this; unsupported entries carry the reason they cannot work.
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+}
+
+message GetVersionRequest {}
+
+message GetVersionResponse {
+  // The daemon's own version, e.g. "0.1.0".
+  string daemon_version = 1;
+  // The API contract version this daemon speaks, e.g. "v1".
+  string api_version = 2;
+  // The oldest client the daemon will serve. A client older than this must
+  // prompt the user to update (ADR-0013).
+  string min_client_version = 3;
+  // Operating system the daemon runs on: "linux", "windows", or "macos".
+  string os = 4;
+}
+
+message GetHealthRequest {}
+
+// Overall daemon health, plus a per-module breakdown so a degraded module
+// (e.g. a failed hotspot reconciler) is visible without taking down the rest.
+message GetHealthResponse {
+  // ServingStatus is defined in common.proto (shared with the event stream).
+  ServingStatus overall = 1;
+  repeated ModuleHealth modules = 2;
+}
+
+message ModuleHealth {
+  // Module name, e.g. "monitor", "hotspot", "vpn".
+  string name = 1;
+  ServingStatus status = 2;
+  // Human explanation when not fully serving; empty when healthy.
+  string detail = 3;
+}
+
+message GetCapabilitiesRequest {}
+
+message GetCapabilitiesResponse {
+  // Keyed by the stable dotted capability name, e.g. "hotspot.wifi_ap"
+  // (ARCHITECTURE.md §3.4).
+  map<string, Capability> capabilities = 1;
+}

@@ -80,3 +80,7 @@ spikes/**/target/
 spikes/**/.dart_tool/
 spikes/**/pubspec.lock
 spikes/**/generated/
+
+# TS SDK dependencies (protoc-gen-es etc.); generated code IS committed, deps are not
+sdk/typescript/node_modules/
+sdk/typescript/package-lock.json
