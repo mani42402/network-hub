@@ -34,27 +34,43 @@ fault_present()   { [ -f tests/fault/run.sh ]; }
 soak_present()    { [ -f tests/e2e/soak.sh ]; }
 uninst_present()  { [ -f tests/e2e/uninstall-contract.sh ]; }
 
-echo "State today — every optional job should SKIP:"
+# Creates a file ONLY if it does not already exist, tracking it for cleanup.
+# A file that is a real committed fixture (e.g. the netns harness, once it
+# lands) must never be created-then-deleted by this test — that would delete
+# the fixture. So permanent fixtures are asserted present separately below.
+touch_temp() {
+    if [ ! -e "$1" ]; then
+        touch "$1"
+        CREATED+=("$1")
+    fi
+}
+
+# Harnesses that already exist as committed fixtures. As each work package lands
+# its harness, move it from the "not yet present" group to here.
+echo "Permanent fixtures — their jobs should RUN:"
+check "netns harness" true netns_present
+
+echo
+echo "Not-yet-present harnesses — their jobs should SKIP today:"
 check "proto"             false proto_present
 check "fuzz targets"      false fuzz_present
 check "flutter app"       false flutter_present
-check "netns harness"     false netns_present
 check "fault harness"     false fault_present
 check "soak harness"      false soak_present
 check "uninstall harness" false uninst_present
 
 echo
 echo "With inputs present — every job should RUN:"
-mkdir -p proto/networkhub/v1 apps/desktop tests/netns tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
-for f in proto/networkhub/v1/_probe.proto apps/desktop/pubspec.yaml tests/netns/run.sh \
-         tests/fault/run.sh tests/e2e/soak.sh tests/e2e/uninstall-contract.sh; do
-    touch "$f"; CREATED+=("$f")
-done
+mkdir -p proto/networkhub/v1 apps/desktop tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
+touch_temp proto/networkhub/v1/_probe.proto
+touch_temp apps/desktop/pubspec.yaml
+touch_temp tests/fault/run.sh
+touch_temp tests/e2e/soak.sh
+touch_temp tests/e2e/uninstall-contract.sh
 
 check "proto"             true proto_present
 check "fuzz targets"      true fuzz_present
 check "flutter app"       true flutter_present
-check "netns harness"     true netns_present
 check "fault harness"     true fault_present
 check "soak harness"      true soak_present
 check "uninstall harness" true uninst_present
