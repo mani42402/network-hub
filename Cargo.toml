@@ -63,6 +63,8 @@ authors = ["NetworkHub contributors"]
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
 anyhow = "1"
+# CLI argument parsing for the daemon and cli binaries.
+clap = { version = "4", features = ["derive"] }
 # Async methods in the PAL traits. Native async-fn-in-traits is not
 # dyn-compatible and does not guarantee Send futures for tokio::spawn; the daemon
 # needs both, and PAL calls are not a hot path, so the boxing is a non-issue.
@@ -100,6 +102,9 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # BLAKE3 for the audit log's tamper-evident hash chain (§10.4).
 blake3 = "1"
+# Regex: the belt-and-braces log redaction scrub (§15), behind the compile-time
+# Secret<T> guarantee. Also the eventual home for network-facing parsers.
+regex = "1"
 # Secret memory hygiene: overwrites secret bytes on drop so VPN keys and
 # passphrases do not linger in freed memory. Backs `Secret<T>` in nh-types.
 zeroize = { version = "1", features = ["derive"] }
