@@ -12,12 +12,21 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+# The SQLite persistence layer (config.db). Off by default so framework-only
+# consumers (feature crates writing reconcilers) never pull sqlx; the daemon
+# enables it. Provides the durable JournalStore, the audit log, settings, and
+# state-document persistence, with migrations and corruption recovery.
+persist = ["dep:sqlx", "dep:blake3"]
+
 [dependencies]
 nh-types = { path = "../nh-types" }
 async-trait = { workspace = true }
+blake3 = { workspace = true, optional = true }
 fastrand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
 tracing = { workspace = true }
@@ -26,4 +35,9 @@ tracing = { workspace = true }
 # The reconciler suite runs against pal-mock (with its mock feature) to prove the
 # framework converges real PAL state, per the WP-M0.4 exit criteria.
 nh-pal = { path = "../nh-pal", features = ["mock"] }
+tempfile = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util", "macros", "time", "sync"] }
+# The persistence tests tamper with the database directly to prove the audit
+# chain detects it; that needs sqlx in the test crate. Only used by the
+# persist-gated test file.
+sqlx = { workspace = true }

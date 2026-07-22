@@ -29,6 +29,11 @@ pub mod reconciler;
 pub mod store;
 pub mod supervisor;
 
+/// SQLite persistence — `config.db` (ADR-0010). Behind the `persist` feature so
+/// framework-only consumers never link sqlx.
+#[cfg(feature = "persist")]
+pub mod persist;
+
 // Most-used items at the crate root.
 pub use event_bus::{EventBus, Received, Sequenced, Subscription};
 pub use journal::{InMemoryJournal, Intent, IntentState, JournalStore};

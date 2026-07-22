@@ -90,12 +90,24 @@ uuid = { version = "1", features = ["v7", "serde"] }
 # security-sensitive (that is getrandom via the crypto crates); just to spread
 # retry timing so reconcilers do not thunder together.
 fastrand = "2"
+# SQLite persistence (config.db, ADR-0010). The bundled feature vendors SQLite,
+# so builds are hermetic on all three OSes — no system libsqlite3, same lesson
+# as vendoring protoc. Runtime queries only (no compile-time DATABASE_URL).
+sqlx = { version = "0.8", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "macros",
+] }
+# BLAKE3 for the audit log's tamper-evident hash chain (§10.4).
+blake3 = "1"
 # Secret memory hygiene: overwrites secret bytes on drop so VPN keys and
 # passphrases do not linger in freed memory. Backs `Secret<T>` in nh-types.
 zeroize = { version = "1", features = ["derive"] }
 # Compile-fail tests: assert that misuse (e.g. printing a Secret) does not
 # compile. A dev-dependency wherever it is used.
 trybuild = "1"
+# Temp files/dirs for tests that need a real on-disk SQLite database.
+tempfile = "3"
 
 # ---------------------------------------------------------------------------
 # Lints. CI runs clippy with `-D warnings`, so every "warn" below is a hard
