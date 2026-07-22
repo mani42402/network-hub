@@ -93,6 +93,9 @@ impl Daemon {
     {
         // 1. Singleton lock: exactly one daemon per machine (AD-1).
         let lock = singleton::acquire(&config.lock_path)?;
+        // On Unix the lock guard's Drop releases the flock; the Windows lock is a
+        // placeholder until WP-M0.7, so the binding looks inert there.
+        #[cfg_attr(not(unix), allow(clippy::no_effect_underscore_binding))]
         let _daemon = Daemon { _lock: lock };
         tracing::info!("acquired singleton lock");
 
@@ -138,6 +141,8 @@ impl Daemon {
 /// Binds the local transport and serves the gRPC services with authorization,
 /// until `shutdown` resolves. Takes owned values so nothing is borrowed across
 /// the await.
+// The Windows branch is a stub until WP-M0.7, so it has no await there.
+#[cfg_attr(not(unix), allow(clippy::unused_async))]
 async fn serve<F>(
     socket_path: PathBuf,
     resolver: PrincipalResolver,

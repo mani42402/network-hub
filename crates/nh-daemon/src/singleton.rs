@@ -26,6 +26,9 @@ pub(crate) struct SingletonLock {
 /// # Errors
 /// Returns [`DaemonError::Io`] if the lock file cannot be created, or
 /// [`DaemonError::AlreadyRunning`] if the lock is already held.
+// The Windows branch always succeeds until WP-M0.7 adds the named mutex, so the
+// Result looks unnecessary there; it is genuinely fallible on Unix.
+#[cfg_attr(not(unix), allow(clippy::unnecessary_wraps))]
 pub(crate) fn acquire(lock_path: &Path) -> Result<SingletonLock, DaemonError> {
     #[cfg(unix)]
     {
