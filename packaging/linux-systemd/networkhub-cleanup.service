@@ -1,0 +1,29 @@
+[Unit]
+Description=NetworkHub boot-time deadman cleanup (F-2 safety net)
+Documentation=https://github.com/REPLACE-ME/networkhub
+DefaultDependencies=no
+# Run early, before networking is configured, so any NetworkHub-owned state left
+# by a previous boot is reclaimed before anything can depend on the network.
+# This runs even when networkhub.service itself fails to start — that is the
+# whole point (F-2): a broken daemon must never leave the machine stranded.
+After=local-fs.target
+Before=network-pre.target networkhub.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/libexec/networkhub/nh-daemon cleanup --dir /run/networkhub --json
+
+# The cleanup reclaims OS state (from M1: firewall tables, sysctls), so it needs
+# the same network-admin privileges as the daemon, but it is short-lived.
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+ProtectHome=yes
+RuntimeDirectory=networkhub
+RuntimeDirectoryMode=0750
+StateDirectory=networkhub
+ReadWritePaths=/run/networkhub /var/lib/networkhub
+
+[Install]
+WantedBy=multi-user.target

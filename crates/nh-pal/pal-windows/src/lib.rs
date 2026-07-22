@@ -1,4 +1,22 @@
 //! Windows PAL backend: WFP, WinRT tethering, IP Helper.
 //!
-//! **Status:** stub. See `docs/architecture/EXECUTION_PLAN.md` for the work
-//! package that fills this crate in.
+//! **Status:** the network-feature backends (WFP firewall, WinRT tethering, IP
+//! Helper) are stubs — see `docs/architecture/EXECUTION_PLAN.md` for the work
+//! package that fills them in.
+//!
+//! What *is* implemented here is the Windows platform glue the daemon composes
+//! in at its edges, because it needs FFI and this crate is the designated FFI
+//! boundary (ADR-0002, §5.1):
+//!
+//! - [`ipc`] — gRPC over a named pipe, the Windows analogue of a Unix domain
+//!   socket, with peer identification via `GetNamedPipeClientProcessId`.
+//! - [`service`] — Windows Service (SCM) registration, start/stop dispatch,
+//!   crash-recovery actions, and the on-start orphan check (the F-2 analogue).
+//!
+//! These modules exist only when compiling for Windows; on other platforms the
+//! crate is an empty stub so the workspace still builds everywhere.
+
+#[cfg(windows)]
+pub mod ipc;
+#[cfg(windows)]
+pub mod service;

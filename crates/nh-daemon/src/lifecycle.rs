@@ -91,11 +91,10 @@ impl Daemon {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        // 1. Singleton lock: exactly one daemon per machine (AD-1).
+        // 1. Singleton lock: exactly one daemon per machine (AD-1). Held for the
+        //    daemon's lifetime; its Drop releases the lock (flock on Unix, the
+        //    exclusive file handle on Windows).
         let lock = singleton::acquire(&config.lock_path)?;
-        // On Unix the lock guard's Drop releases the flock; the Windows lock is a
-        // placeholder until WP-M0.7, so the binding looks inert there.
-        #[cfg_attr(not(unix), allow(clippy::no_effect_underscore_binding))]
         let _daemon = Daemon { _lock: lock };
         tracing::info!("acquired singleton lock");
 
@@ -141,8 +140,6 @@ impl Daemon {
 /// Binds the local transport and serves the gRPC services with authorization,
 /// until `shutdown` resolves. Takes owned values so nothing is borrowed across
 /// the await.
-// The Windows branch is a stub until WP-M0.7, so it has no await there.
-#[cfg_attr(not(unix), allow(clippy::unused_async))]
 async fn serve<F>(
     socket_path: PathBuf,
     resolver: PrincipalResolver,
@@ -173,7 +170,9 @@ where
         set_socket_permissions(&socket_path)?;
 
         tracing::info!(socket = %socket_path.display(), "IPC listening");
-        // The readiness marker the CLI and service manager wait on.
+        // Tell the service manager we are up (sd_notify), and print the marker
+        // the CLI waits on.
+        crate::readiness::notify_ready();
         println!("READY");
 
         builder
@@ -186,13 +185,39 @@ where
 
     #[cfg(not(unix))]
     {
-        // The Windows named-pipe transport lands with the service integration
-        // (WP-M0.7); the pieces were proven in SPIKE-A.
-        let _ = (builder, shutdown, socket_path);
-        Err(DaemonError::Server(
-            "Windows named-pipe IPC is implemented in WP-M0.7".to_owned(),
-        ))
+        // Windows: gRPC over a named pipe (ADR-0002, ADR-0016). The pipe name is
+        // derived deterministically from the socket path so restarts and clients
+        // agree on it, and distinct dirs (e.g. daemon-sim) get distinct pipes.
+        let pipe_name = windows_pipe_name(&socket_path);
+        let incoming = pal_windows::ipc::incoming(&pipe_name);
+
+        tracing::info!(pipe = %pipe_name, "IPC listening (named pipe)");
+        // readiness::notify_ready is a no-op on Windows; the SCM Running status
+        // is set by pal_windows::service before the daemon body serves.
+        crate::readiness::notify_ready();
+        println!("READY");
+
+        builder
+            .serve_with_incoming_shutdown(incoming, shutdown)
+            .await
+            .map_err(|e| DaemonError::Server(e.to_string()))?;
+
+        Ok(())
     }
+}
+
+/// Maps a socket path to a Windows pipe name. Pipe names live in a flat
+/// namespace and forbid most path punctuation, so every non-alphanumeric
+/// character is replaced with `-`, keeping the mapping deterministic and unique
+/// per path. Shared with [`crate::cleanup`] so both agree on the pipe.
+#[cfg(not(unix))]
+pub(crate) fn windows_pipe_name(socket_path: &std::path::Path) -> String {
+    let sanitized: String = socket_path
+        .to_string_lossy()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    format!(r"\\.\pipe\networkhub-{sanitized}")
 }
 
 #[cfg(unix)]

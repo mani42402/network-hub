@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon for the NetworkHub daemon on macOS.
+
+  Installed under /Library/LaunchDaemons and loaded by launchd at boot, as root.
+  For a signed, notarized build this is what SMAppService registers (ADR-0012,
+  §13.3); the manual install path (scripts/install-macos.sh) uses it directly
+  until the Developer ID cert (PRE-2) enables SMAppService.
+
+  The boot-cleanup runs as a separate LaunchDaemon ordered before this one via a
+  RunAtLoad job; launchd has no direct "before" ordering, so the daemon also runs
+  its own startup deadman as the reliable second line (F-2).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.networkhub.daemon</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/libexec/networkhub/nh-daemon</string>
+        <string>run</string>
+        <string>--dir</string>
+        <string>/var/run/networkhub</string>
+        <string>--json</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>2</integer>
+
+    <key>UserName</key>
+    <string>root</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/networkhub.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/networkhub.log</string>
+</dict>
+</plist>

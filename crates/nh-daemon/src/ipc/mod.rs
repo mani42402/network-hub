@@ -53,14 +53,34 @@ pub fn peer_cred_of(req: &Request<Body>) -> Option<PeerCred> {
 
 /// The default principal resolver: maps peer credentials to a role.
 ///
-/// For M0.6 the mapping is deliberately simple — the user running the daemon
-/// (its own euid) and root are administrators; any other local user is a viewer;
-/// a connection with no readable credentials gets no roles (denied everything).
-/// Group-based mapping via the `NetworkHub Operators` group lands in WP-M0.7.
+/// On Unix (M0.6) the mapping is deliberately simple — the user running the
+/// daemon (its own euid) and root are administrators; any other local user is a
+/// viewer; a connection with no readable credentials gets no roles (denied
+/// everything). Group-based mapping via the `NetworkHub Operators` group lands
+/// with the real PAL backends.
+///
+/// On Windows the named-pipe connection carries the client process id (the
+/// `SO_PEERCRED` analogue). M0 maps every identified pipe client to the
+/// read-only Viewer role and defers privileged (Admin) mapping — which needs
+/// client-token/SID inspection — to M1, where it is verified on hardware; a
+/// connection with no resolvable pid gets no roles. This is fail-closed: no
+/// caller is granted more than read access without a verified identity.
 #[must_use]
 pub fn default_resolver() -> PrincipalResolver {
-    let daemon_uid = current_uid();
-    Arc::new(move |req| match peer_cred_of(req) {
+    #[cfg(unix)]
+    {
+        let daemon_uid = current_uid();
+        Arc::new(move |req| resolve_unix(req, daemon_uid))
+    }
+    #[cfg(not(unix))]
+    {
+        Arc::new(resolve_windows)
+    }
+}
+
+#[cfg(unix)]
+fn resolve_unix(req: &Request<Body>, daemon_uid: u32) -> Principal {
+    match peer_cred_of(req) {
         Some(cred) => {
             let roles = if cred.uid == 0 || cred.uid == daemon_uid {
                 [Role::Admin].into_iter().collect()
@@ -76,15 +96,38 @@ pub fn default_resolver() -> PrincipalResolver {
                 label: format!("uid:{}", cred.uid),
             }
         }
-        None => Principal {
+        None => unauthenticated(),
+    }
+}
+
+#[cfg(not(unix))]
+fn resolve_windows(req: &Request<Body>) -> Principal {
+    match req.extensions().get::<pal_windows::ipc::PipeConnectInfo>() {
+        Some(info) if info.client_pid != 0 => Principal {
+            // No uid/gid concept on Windows; carry the pid in the uid slot until
+            // a Windows-native PrincipalKind (token SID) is added in M1.
             kind: PrincipalKind::LocalUser {
-                uid: u32::MAX,
-                gid: u32::MAX,
+                uid: info.client_pid,
+                gid: 0,
             },
-            roles: std::collections::BTreeSet::new(),
-            label: "unauthenticated".to_owned(),
+            roles: [Role::Viewer].into_iter().collect(),
+            label: format!("pid:{}", info.client_pid),
         },
-    })
+        _ => unauthenticated(),
+    }
+}
+
+/// A principal with no roles: everything is denied. Used when the caller's
+/// identity cannot be read from the connection.
+fn unauthenticated() -> Principal {
+    Principal {
+        kind: PrincipalKind::LocalUser {
+            uid: u32::MAX,
+            gid: u32::MAX,
+        },
+        roles: std::collections::BTreeSet::new(),
+        label: "unauthenticated".to_owned(),
+    }
 }
 
 /// A resolver that assigns fixed roles to every caller, for tests.
@@ -108,12 +151,4 @@ pub fn authz_layer(resolver: PrincipalResolver) -> AuthzLayer {
 #[cfg(unix)]
 fn current_uid() -> u32 {
     nix::unistd::getuid().as_raw()
-}
-
-#[cfg(not(unix))]
-fn current_uid() -> u32 {
-    // On Windows, uid is not meaningful; the WP-M0.7 named-pipe path uses the
-    // client token instead. Until then, no uid matches, so only the fixed
-    // resolver (tests) or root-equivalent logic applies.
-    u32::MAX - 1
 }

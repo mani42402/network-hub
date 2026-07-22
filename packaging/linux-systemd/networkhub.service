@@ -1,0 +1,53 @@
+[Unit]
+Description=NetworkHub network management daemon
+Documentation=https://github.com/REPLACE-ME/networkhub
+# Order after the boot-cleanup oneshot so orphaned state from a previous boot is
+# reclaimed before we start (F-2). Wants (not Requires): a cleanup failure must
+# not stop the daemon — the daemon's own startup deadman is the second line.
+After=network.target networkhub-cleanup.service
+Wants=networkhub-cleanup.service
+
+[Service]
+Type=notify
+ExecStart=/usr/libexec/networkhub/nh-daemon run --dir /run/networkhub --json
+NotifyAccess=main
+# Recover from a crash: restart, throttled, so a crash loop backs off rather than
+# hammering. Combined with the boot-cleanup and the on-start deadman, this is the
+# Linux half of the fail-open story (ADR-0005).
+Restart=on-failure
+RestartSec=2
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# --- Hardening (ARCHITECTURE.md §10.6) ------------------------------------
+# The daemon needs network administration privileges but little else, so it is
+# sandboxed hard. SystemCallFilter (seccomp) is deliberately omitted until the
+# hardening milestone M-H1 — a wrong allowlist is an outage, and the syscall
+# surface is not yet stable.
+User=root
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+# Capabilities the network features need (firewall, interfaces, low ports). The
+# set is trimmed to these; everything else is dropped.
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE
+
+# ProtectSystem=strict makes the filesystem read-only except these paths: the
+# runtime dir for the socket, and the state dir for config.db.
+RuntimeDirectory=networkhub
+RuntimeDirectoryMode=0750
+StateDirectory=networkhub
+ReadWritePaths=/run/networkhub /var/lib/networkhub
+
+[Install]
+WantedBy=multi-user.target

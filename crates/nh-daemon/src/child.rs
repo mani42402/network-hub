@@ -9,8 +9,11 @@
 //! On Unix the child is placed in its own process group so the whole group can be
 //! signalled (killing descendants too), and it is killed on stop/drop. This uses
 //! tokio's safe `process_group` and the `nix` crate's safe `kill`, so the crate
-//! keeps `unsafe_code = "forbid"`. The Windows equivalent (a Job Object with
-//! `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`) lands in WP-M0.7; the API is fixed here.
+//! keeps `unsafe_code = "forbid"`. On both platforms `kill_on_drop` terminates
+//! the immediate child. The Windows *descendant*-kill (a Job Object with
+//! `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, via `pal-windows`) lands with the first
+//! real supervised child in M1 — M0 spawns none — and the API is fixed here so
+//! that code drops in without touching callers.
 
 use std::process::Stdio;
 

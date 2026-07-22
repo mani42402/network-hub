@@ -1,6 +1,6 @@
 [package]
 name = "pal-windows"
-description = "Windows PAL backend: WFP, WinRT tethering, IP Helper."
+description = "Windows PAL backend: WFP, WinRT tethering, IP Helper, and the Windows IPC transport + service integration."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -26,3 +26,24 @@ unimplemented = "warn"
 dbg_macro = "warn"
 
 [dependencies]
+
+# The Windows IPC transport (named pipe → tonic) and the SCM service wrapper.
+# All Windows-only: off Windows the crate is a stub and pulls none of this.
+[target.'cfg(windows)'.dependencies]
+tokio = { workspace = true, features = ["net", "rt", "sync", "io-util"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tonic = { workspace = true }
+http = "1"
+tower = "0.5"
+tracing = { workspace = true }
+# windows-service handles SCM registration, start/stop dispatch, and recovery
+# actions. windows-sys covers only the client-process-id query (the Windows
+# analogue of SO_PEERCRED) that windows-service does not expose.
+windows-service = "0.8"
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Pipes",
+] }
+
+[target.'cfg(windows)'.dev-dependencies]
+tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }

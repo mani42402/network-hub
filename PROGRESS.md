@@ -17,9 +17,11 @@ M0's exit criterion is met. `main` holds the Phase 0 baseline.
 | M0.1 | `nh-types` — domain vocabulary, `Secret<T>`, errors, capabilities | ✅ CI-green 3-OS |
 | M0.2 | `nh-proto` — API contracts, Rust/Dart/TS codegen, provable authz coverage | ✅ CI-green 3-OS |
 | M0.3 | `nh-pal` — 7 PAL traits + mock with fault injection | ✅ CI-green 3-OS |
-| M0.4 | `nh-state` — desired-state store, reconciler, event bus, intent journal | ✅ committed |
-| M0.5 | `config.db` — storage, migrations, resilience | next |
-| M0.6–M0.14 | daemon, service, capability probe, PAL interface backends, monitor, CLI, UI, packaging, fault suite | pending |
+| M0.4 | `nh-state` — desired-state store, reconciler, event bus, intent journal | ✅ CI-green 3-OS |
+| M0.5 | `config.db` — storage, migrations, resilience | ✅ CI-green 3-OS |
+| M0.6 | `nh-daemon` — lifecycle, IPC (UDS/pipe), authorization, child supervision | ✅ CI-green 3-OS |
+| M0.7 | Service integration + boot-cleanup (F-2): units/plists, install scripts, Windows SCM + named-pipe transport | ✅ CI pending; runtime `[you-verify]` per [ops/service.md](docs/ops/service.md) |
+| M0.8–M0.14 | capability probe, PAL interface backends, monitor, CLI, UI, packaging, fault suite | pending |
 
 **M0 exit criterion:** fresh VM → install → live network state in the UI →
 uninstall → clean state-diff, on all three OSes.
