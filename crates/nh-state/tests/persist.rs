@@ -247,8 +247,10 @@ async fn backups_rotate_to_the_keep_limit() {
 fn corrupt_file(path: &std::path::Path) {
     // Remove the WAL/SHM siblings so the garbage main file is what gets opened.
     for ext in ["-wal", "-shm"] {
-        let sibling =
-            path.with_file_name(format!("{}{ext}", path.file_name().unwrap().to_str().unwrap()));
+        let sibling = path.with_file_name(format!(
+            "{}{ext}",
+            path.file_name().unwrap().to_str().unwrap()
+        ));
         let _ = std::fs::remove_file(sibling);
     }
     // Remove and recreate rather than truncate, to avoid any lingering handle.
