@@ -13,3 +13,17 @@ publish = false
 workspace = true
 
 [dependencies]
+nh-types = { path = "../nh-types" }
+async-trait = { workspace = true }
+fastrand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# The reconciler suite runs against pal-mock (with its mock feature) to prove the
+# framework converges real PAL state, per the WP-M0.4 exit criteria.
+nh-pal = { path = "../nh-pal", features = ["mock"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "test-util", "macros", "time", "sync"] }

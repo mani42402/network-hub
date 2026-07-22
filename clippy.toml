@@ -18,6 +18,8 @@ too-many-arguments-threshold = 7
 doc-valid-idents = [
     # Product and protocols
     "NetworkHub", "WireGuard", "OpenVPN", "IKEv2", "L2TP", "IPsec",
+    # Internal crate/type names that read as prose in docs
+    "pal-mock", "MockRouting", "MockInterfaces", "StateStore",
     # Apple frameworks
     "SystemConfiguration", "SCDynamicStore", "NetworkExtension", "CoreWLAN",
     "SMAppService", "LaunchAgents", "LaunchDaemons", "utun",
