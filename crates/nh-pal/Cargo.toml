@@ -12,4 +12,24 @@ publish = false
 [lints]
 workspace = true
 
+[features]
+# The mock backend. Off by default so production builds never link it; enabled
+# by test builds and by daemon-sim (WP-M0.11) via `features = ["mock"]`. It adds
+# tokio's timer for injectable latency; the async runtime itself is provided by
+# the caller (a test's #[tokio::test], or the daemon).
+mock = ["tokio/time"]
+
 [dependencies]
+# Internal crates are path dependencies (never workspace deps), which is also how
+# `cargo xtask check-layers` identifies the internal dependency graph.
+nh-types = { path = "../nh-types" }
+async-trait = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+# Interface change events use a broadcast channel, so the sync feature is always
+# needed by the trait definitions.
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+# Tests drive async guards and the mock.
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time"] }

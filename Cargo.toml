@@ -63,6 +63,10 @@ authors = ["NetworkHub contributors"]
 # ---------------------------------------------------------------------------
 [workspace.dependencies]
 anyhow = "1"
+# Async methods in the PAL traits. Native async-fn-in-traits is not
+# dyn-compatible and does not guarantee Send futures for tokio::spawn; the daemon
+# needs both, and PAL calls are not a hot path, so the boxing is a non-issue.
+async-trait = "0.1"
 # gRPC stack. Versions pinned from the SPIKE-A resolution (WP-0.3); note that
 # tonic 0.14 split prost codegen into tonic-prost / tonic-prost-build, so both
 # are needed alongside tonic itself (a lesson recorded in ADR-0016).

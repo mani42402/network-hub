@@ -485,6 +485,13 @@ version = "0.0.0"
 [[package]]
 name = "nh-pal"
 version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "nh-types",
+ "serde",
+ "thiserror",
+ "tokio",
+]
 
 [[package]]
 name = "nh-plugin-host"

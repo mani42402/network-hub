@@ -19,13 +19,13 @@ doc-valid-idents = [
     # Product and protocols
     "NetworkHub", "WireGuard", "OpenVPN", "IKEv2", "L2TP", "IPsec",
     # Apple frameworks
-    "SystemConfiguration", "NetworkExtension", "CoreWLAN", "SMAppService",
-    "LaunchAgents", "LaunchDaemons",
+    "SystemConfiguration", "SCDynamicStore", "NetworkExtension", "CoreWLAN",
+    "SMAppService", "LaunchAgents", "LaunchDaemons", "utun",
     # Windows APIs
     "NetworkOperatorTetheringManager", "WinRT", "IPHelper",
     # Linux stack
     "nftables", "iptables", "hostapd", "NetworkManager", "dnsmasq",
-    "systemd", "wpa_supplicant", "netlink",
+    "systemd", "wpa_supplicant", "netlink", "RTNETLINK", "eBPF", "conntrack",
     # Platform names and acronyms
     "launchd", "macOS", "IPv4", "IPv6", "DoH", "DoT", "DHCPv4", "DHCPv6",
     "WASM", "WASI", "SQLite", "gRPC", "WFP", "PF", "ICS", "OUI", "RSSI",
