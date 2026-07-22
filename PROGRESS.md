@@ -6,7 +6,27 @@ follows: **state what was proven and where, and state plainly what was not.**
 
 ---
 
-## Current: Phase 0 — Foundations (complete pending remote/hardware verification)
+## Current: Milestone M0 — Walking Skeleton (in progress)
+
+Work happens on branch `phase/m0-walking-skeleton` (PR #2 to `main`); each work
+package is a commit, CI gates every push, and the branch merges to `main` when
+M0's exit criterion is met. `main` holds the Phase 0 baseline.
+
+| WP | What | Status |
+|----|------|--------|
+| M0.1 | `nh-types` — domain vocabulary, `Secret<T>`, errors, capabilities | ✅ CI-green 3-OS |
+| M0.2 | `nh-proto` — API contracts, Rust/Dart/TS codegen, provable authz coverage | ✅ CI-green 3-OS |
+| M0.3 | `nh-pal` — 7 PAL traits + mock with fault injection | ✅ CI-green 3-OS |
+| M0.4 | `nh-state` — desired-state store, reconciler, event bus, intent journal | ✅ committed |
+| M0.5 | `config.db` — storage, migrations, resilience | next |
+| M0.6–M0.14 | daemon, service, capability probe, PAL interface backends, monitor, CLI, UI, packaging, fault suite | pending |
+
+**M0 exit criterion:** fresh VM → install → live network state in the UI →
+uninstall → clean state-diff, on all three OSes.
+
+---
+
+## Phase 0 — Foundations (complete)
 
 All six Phase 0 work packages are implemented and committed. Two exit criteria
 remain open because they need resources this development machine (macOS, no root,
