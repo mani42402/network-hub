@@ -182,10 +182,18 @@ impl Database {
 
     async fn try_open_healthy(path: &Path) -> Result<Self, DbError> {
         let pool = Self::connect(path, false).await?;
-        // PRAGMA quick_check returns a single row "ok" on a healthy database.
-        let rows = sqlx::query("PRAGMA quick_check").fetch_all(&pool).await?;
-        let ok = rows.len() == 1 && rows[0].try_get::<String, _>(0).is_ok_and(|s| s == "ok");
-        if ok {
+        // PRAGMA quick_check returns a single row "ok" on a healthy database. A
+        // corrupt/garbage file makes this query itself error (SQLite NOTADB).
+        //
+        // Critically, the pool MUST be closed before returning any error, or the
+        // open file handle prevents recovery from renaming the file on Windows
+        // (which forbids renaming a file that is still open — unlike Unix, where
+        // it works and this leak was invisible).
+        let check = sqlx::query("PRAGMA quick_check").fetch_all(&pool).await;
+        let healthy = matches!(&check, Ok(rows)
+            if rows.len() == 1 && rows[0].try_get::<String, _>(0).is_ok_and(|s| s == "ok"));
+
+        if healthy {
             Ok(Self {
                 pool,
                 path: path.to_path_buf(),
@@ -269,7 +277,7 @@ impl Database {
                 .unwrap_or("config.db")
         );
         quarantined.set_file_name(name);
-        std::fs::rename(path, &quarantined)?;
+        rename_with_retry(path, &quarantined)?;
         // WAL/SHM siblings would confuse a fresh open; move them aside too.
         for ext in ["-wal", "-shm"] {
             let sibling = sibling(path, ext);
@@ -357,4 +365,22 @@ fn sibling(path: &Path, suffix: &str) -> PathBuf {
     );
     p.set_file_name(name);
     p
+}
+
+/// Renames a file, retrying briefly if it fails. On Windows a just-closed file
+/// handle can linger for a moment (and antivirus/indexers hold handles), so a
+/// rename that must succeed — quarantining a corrupt database — gets a few
+/// attempts before giving up.
+fn rename_with_retry(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut last_err = None;
+    for attempt in 0..10 {
+        match std::fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last_err = Some(e);
+                std::thread::sleep(std::time::Duration::from_millis(20 * (attempt + 1)));
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| std::io::Error::other("rename failed")))
 }
