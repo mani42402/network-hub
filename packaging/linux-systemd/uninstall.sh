@@ -39,7 +39,9 @@ rm -rf /run/networkhub
 if [ "$PURGE" -eq 1 ]; then
     echo "==> purging config and state (--purge)"
     rm -rf /var/lib/networkhub
-    getent group networkhub >/dev/null && groupdel networkhub 2>/dev/null || true
+    if getent group networkhub >/dev/null; then
+        groupdel networkhub 2>/dev/null || true
+    fi
 else
     echo "==> keeping /var/lib/networkhub (config); pass --purge to remove it"
 fi

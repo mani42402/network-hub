@@ -7,8 +7,6 @@
 #![cfg(feature = "persist")]
 #![allow(clippy::unwrap_used)]
 
-use std::io::Write;
-
 use nh_state::journal::{Intent, IntentState, JournalStore};
 use nh_state::persist::{AuditEntry, Database, OpenReport, TamperCheck};
 
@@ -245,62 +243,59 @@ async fn backups_rotate_to_the_keep_limit() {
 /// to disk, so the corruption is deterministic even under heavy parallel test
 /// load — an in-place truncate can race the OS releasing the closed handle.
 fn corrupt_file(path: &std::path::Path) {
-    use std::io::Read;
+    use std::io::{Read, Seek, SeekFrom, Write};
 
-    // Remove the WAL/SHM siblings so the garbage main file is what gets opened.
-    for ext in ["-wal", "-shm"] {
-        let sibling = path.with_file_name(format!(
+    // Overwrite the SQLite header with garbage so the file can no longer be a
+    // valid database, then verify the corruption "stuck".
+    //
+    // On Windows this must beat SQLite's *asynchronous* close: after
+    // `Database::close().await` returns, a pool worker may still be finishing the
+    // final WAL checkpoint, which writes pages — including the header — back into
+    // the file and would restore a healthy database over our garbage. We do NOT
+    // delete-and-recreate: Windows refuses to delete a file while any handle (the
+    // closing worker, or an AV scan) is open, and that can take many seconds. We
+    // instead open the file for writing with shared access — which succeeds even
+    // while those handles are open — overwrite the header, and re-check. If a
+    // late checkpoint restored it, we loop; the close eventually finishes, no
+    // more checkpoints occur, and the corruption sticks. On Unix the first pass
+    // succeeds immediately.
+    const GARBAGE: &[u8] = b"this is not a sqlite database, it is garbage bytes not a header";
+    let sibling = |ext: &str| {
+        path.with_file_name(format!(
             "{}{ext}",
             path.file_name().unwrap().to_str().unwrap()
-        ));
-        let _ = std::fs::remove_file(sibling);
-    }
+        ))
+    };
 
-    // Delete the main file, retrying until it succeeds. This is load-bearing on
-    // Windows: `Database::close`'s `pool.close().await` can return before the
-    // last SQLite connection's WAL checkpoint-on-close has finished. While that
-    // handle is open, Windows refuses to delete the file — so `remove_file` fails
-    // until the checkpoint completes and the handle is released. Waiting for that
-    // is exactly the point: if we recreated the garbage file while the checkpoint
-    // was still in flight, the checkpoint would write the WAL pages back over our
-    // garbage and restore a *healthy* database, and the reopen would (flakily)
-    // report `Healthy` instead of detecting corruption. (On Unix the delete
-    // succeeds immediately; the loop is a no-op there.)
-    // Wait — up to a generous deadline — until the OS lets us delete the file,
-    // i.e. until SQLite's async close has fully released the handle and any
-    // Windows AV scan of the just-written file has finished. After a backup
-    // (VACUUM INTO writes the whole db) this can take several seconds on a loaded
-    // CI runner, so a fixed small iteration budget occasionally under-waits. On
-    // Unix the first delete succeeds immediately.
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     loop {
-        match std::fs::remove_file(path) {
-            Ok(()) => break,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
-            Err(e) => {
-                assert!(
-                    std::time::Instant::now() < deadline,
-                    "could not delete db to corrupt it within 30s: {e}"
-                );
-                std::thread::sleep(std::time::Duration::from_millis(20));
-            }
+        // A checkpoint replays the WAL into the main file; drop it so there is
+        // nothing to replay over our garbage (best-effort — it may be held).
+        for ext in ["-wal", "-shm"] {
+            let _ = std::fs::remove_file(sibling(ext));
         }
+        if let Ok(mut f) = std::fs::OpenOptions::new().write(true).open(path) {
+            let _ = f.seek(SeekFrom::Start(0));
+            let _ = f.write_all(GARBAGE);
+            let _ = f.sync_all();
+        }
+
+        // Let any in-flight checkpoint land, then check the header is still gone.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let mut head = [0u8; 16];
+        let stuck = match std::fs::File::open(path) {
+            Ok(mut f) => {
+                let n = f.read(&mut head).unwrap_or(0);
+                !head[..n].starts_with(b"SQLite format 3")
+            }
+            Err(_) => false,
+        };
+        if stuck {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "corruption did not stick within 30s (a late checkpoint kept restoring the header)"
+        );
     }
-
-    // Now nothing holds the path: write garbage that has no valid SQLite header.
-    let mut f = std::fs::File::create(path).unwrap();
-    f.write_all(b"this is not a sqlite database, it is garbage bytes not a header")
-        .unwrap();
-    f.sync_all().unwrap();
-    drop(f);
-
-    // Verify the corruption landed — the file must not begin with the SQLite
-    // magic. This converts any residual race into a clear failure here rather
-    // than a mystifying assertion in the test body.
-    let mut head = [0u8; 16];
-    let n = std::fs::File::open(path).unwrap().read(&mut head).unwrap();
-    assert!(
-        !head[..n].starts_with(b"SQLite format 3"),
-        "corrupt_file failed to overwrite the database header"
-    );
 }
