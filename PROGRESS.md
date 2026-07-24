@@ -25,7 +25,8 @@ M0's exit criterion is met. `main` holds the Phase 0 baseline.
 | M0.9 | `InterfaceInfo` + counters + watchers per OS (RTNETLINK / PF_ROUTE / NotifyIpInterfaceChange), shared diff/identity (F-13) watch engine | ✅ CI-green 3-OS; hotplug soak `[you-verify]` |
 | M0.10 | `nh-monitor` (live throughput): monotonic-clock rate derivation (E-25/E-26), per-interface ring buffer, broadcast stream API | ✅ CI-green 3-OS; 5%-accuracy check `[you-verify]` |
 | M0.11 | `daemon-sim` (unprivileged daemon) + `nh-cli` (status/capabilities/doctor/debug-tasks, `--json`) over UDS/named-pipe | ✅ CI-green 3-OS; Windows pipe client runtime `[you-verify]` |
-| M0.12–M0.14 | Flutter UI, packaging, fault suite | pending |
+| M0.12 | Flutter desktop app: `networkhub_sdk` Dart client + capability-matrix UI (renders from AD-6, no platform conditionals), gRPC over UDS to `daemon-sim` | ✅ analyze + 3 widget tests green; live UDS connect verified locally; Windows pipe client + packaged GUI `[you-verify]` |
+| M0.13–M0.14 | packaging v0, fault suite | pending |
 
 **M0 exit criterion:** fresh VM → install → live network state in the UI →
 uninstall → clean state-diff, on all three OSes.
