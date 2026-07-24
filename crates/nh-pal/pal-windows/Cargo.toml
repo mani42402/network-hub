@@ -29,8 +29,11 @@ dbg_macro = "warn"
 
 # The Windows IPC transport (named pipe → tonic) and the SCM service wrapper.
 # All Windows-only: off Windows the crate is a stub and pulls none of this.
-# The WP-M0.8 capability probe returns nh-pal's `SystemFacts`.
+# The WP-M0.8 capability probe returns nh-pal's `SystemFacts`; the M0.9
+# InterfaceInfo backend returns its interface types.
 nh-pal = { path = ".." }
+nh-types = { path = "../../nh-types" }
+async-trait = { workspace = true }
 tokio = { workspace = true, features = ["net", "rt", "sync", "io-util"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { workspace = true }

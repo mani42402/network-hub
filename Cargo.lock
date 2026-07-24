@@ -1177,8 +1177,10 @@ dependencies = [
 name = "pal-windows"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "http",
  "nh-pal",
+ "nh-types",
  "tokio",
  "tokio-stream",
  "tonic",
