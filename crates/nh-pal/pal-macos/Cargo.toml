@@ -26,3 +26,11 @@ unimplemented = "warn"
 dbg_macro = "warn"
 
 [dependencies]
+
+# macOS-only: off macOS the crate is an empty stub and pulls none of this, so the
+# workspace still builds on Linux and Windows (mirrors pal-windows). The M0 probe
+# uses only safe `nix` wrappers (getifaddrs, uname, euid) plus a plist read — no
+# unsafe. Precise Wi-Fi/Ethernet typing needs SystemConfiguration, added in M0.9.
+[target.'cfg(target_os = "macos")'.dependencies]
+nh-pal = { path = ".." }
+nix = { version = "0.29", features = ["net", "feature", "user"] }

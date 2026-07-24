@@ -26,3 +26,11 @@ unimplemented = "warn"
 dbg_macro = "warn"
 
 [dependencies]
+
+# Linux-only: off Linux the crate is an empty stub and pulls none of this, so the
+# workspace still builds on macOS and Windows (mirrors pal-windows). Safe `nix`
+# wrappers cover the probe — getifaddrs (net), uname (feature), euid (user) — and
+# /sys reads cover interface typing, so the M0 Linux probe needs no unsafe.
+[target.'cfg(target_os = "linux")'.dependencies]
+nh-pal = { path = ".." }
+nix = { version = "0.29", features = ["net", "feature", "user"] }

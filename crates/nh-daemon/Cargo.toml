@@ -18,6 +18,8 @@ workspace = true
 nh-types = { path = "../nh-types" }
 nh-proto = { path = "../nh-proto" }
 nh-state = { path = "../nh-state", features = ["persist"] }
+# The capability-probe framework (AD-6); the per-OS backends are wired below.
+nh-pal = { path = "../nh-pal" }
 
 async-trait = { workspace = true }
 clap = { workspace = true }
@@ -41,9 +43,16 @@ tracing-subscriber = { workspace = true }
 # for the default principal resolver.
 nix = { version = "0.29", features = ["signal", "process", "fs", "user"] }
 
-# The Windows IPC transport (named pipe) and SCM service integration. This is
-# the one place a concrete PAL backend is wired in — allowed only for the
-# composition root by the layer checker (AD-7, tools/xtask).
+# The concrete PAL backends: the composition root selects one per target OS to
+# gather capability facts (and, on Windows, the IPC transport + SCM service).
+# Wiring a real backend is allowed only for the composition root by the layer
+# checker (AD-7, tools/xtask).
+[target.'cfg(target_os = "linux")'.dependencies]
+pal-linux = { path = "../nh-pal/pal-linux" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+pal-macos = { path = "../nh-pal/pal-macos" }
+
 [target.'cfg(windows)'.dependencies]
 pal-windows = { path = "../nh-pal/pal-windows" }
 

@@ -8,8 +8,10 @@ use nh_proto::v1::{
     GetCapabilitiesResponse, GetHealthRequest, GetHealthResponse, GetVersionRequest,
     GetVersionResponse, ModuleHealth, ServingStatus,
 };
-use nh_types::capability::{CapabilityMatrix, CapabilityStatus};
+use nh_types::capability::CapabilityStatus;
 use tonic::{Request, Response, Status};
+
+use crate::capabilities::Capabilities;
 
 /// The daemon's own version.
 pub const DAEMON_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -22,8 +24,9 @@ pub const MIN_CLIENT_VERSION: &str = "0.0.0";
 /// Shared daemon state the system service reads.
 #[derive(Debug)]
 pub struct SystemState {
-    /// The capability matrix probed at startup.
-    pub capabilities: CapabilityMatrix,
+    /// The live capability matrix (AD-6): probed at startup, re-probable, and
+    /// serving the latest snapshot to `GetCapabilities`.
+    pub capabilities: Arc<Capabilities>,
 }
 
 /// Implementation of the `SystemService` RPCs.
@@ -74,9 +77,8 @@ impl SystemService for SystemServiceImpl {
         &self,
         _request: Request<GetCapabilitiesRequest>,
     ) -> Result<Response<GetCapabilitiesResponse>, Status> {
-        let capabilities = self
-            .state
-            .capabilities
+        let matrix = self.state.capabilities.current();
+        let capabilities = matrix
             .iter()
             .map(|(key, cap)| (key.clone(), to_proto(cap)))
             .collect();

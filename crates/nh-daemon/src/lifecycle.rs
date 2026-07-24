@@ -115,9 +115,10 @@ impl Daemon {
             );
         }
 
-        // 4. Probe capabilities (provisional until WP-M0.8).
-        let capabilities = capabilities::probe();
-        tracing::info!(count = capabilities.len(), "probed capabilities");
+        // 4. Probe capabilities (AD-6, WP-M0.8). The holder is re-probable; the
+        //    hardware-change trigger that drives re-probes lands in WP-M0.9.
+        let capabilities = Arc::new(capabilities::Capabilities::probe_now());
+        tracing::info!(count = capabilities.current().len(), "probed capabilities");
 
         // 5. Build services over shared state.
         let system = SystemServiceImpl::new(Arc::new(SystemState { capabilities }));

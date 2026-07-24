@@ -32,6 +32,7 @@ pub mod error;
 pub mod firewall;
 pub mod guard;
 pub mod interface;
+pub mod probe;
 pub mod process;
 pub mod routing;
 pub mod shaper;
