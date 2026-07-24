@@ -975,6 +975,20 @@ version = "0.0.0"
 [[package]]
 name = "nh-cli"
 version = "0.0.0"
+dependencies = [
+ "clap",
+ "http",
+ "hyper-util",
+ "nh-daemon",
+ "nh-proto",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tower",
+]
 
 [[package]]
 name = "nh-daemon"
