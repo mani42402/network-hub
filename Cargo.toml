@@ -113,6 +113,12 @@ zeroize = { version = "1", features = ["derive"] }
 trybuild = "1"
 # Temp files/dirs for tests that need a real on-disk SQLite database.
 tempfile = "3"
+# Authenticated encryption for secret blobs (VPN keys, passphrases) so they can
+# be stored outside the OS keychain (e.g. in config.db) without exposing them —
+# AES-256-GCM, RustCrypto (nh-secrets, WP-M1.1, §7.1). Permissive licence.
+aes-gcm = "0.10"
+# The system CSPRNG for master keys and nonces. Permissive licence.
+getrandom = "0.2"
 
 # ---------------------------------------------------------------------------
 # Lints. CI runs clippy with `-D warnings`, so every "warn" below is a hard
