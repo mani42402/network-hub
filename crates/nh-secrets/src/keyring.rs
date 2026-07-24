@@ -136,7 +136,11 @@ fn secure_dir(dir: &Path) -> SecretsResult<()> {
     Ok(())
 }
 
+// Signature must match the Unix variant (which genuinely can fail), so the
+// always-`Ok` non-Unix body trips `unnecessary_wraps` — a cfg-gated false
+// positive only clippy on a non-Unix target sees.
 #[cfg(not(unix))]
+#[allow(clippy::unnecessary_wraps)]
 fn secure_dir(_dir: &Path) -> SecretsResult<()> {
     // Non-Unix uses a platform keychain, not this fallback; nothing to harden.
     Ok(())
