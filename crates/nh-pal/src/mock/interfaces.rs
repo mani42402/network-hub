@@ -17,7 +17,8 @@ use tokio::sync::broadcast;
 
 use crate::error::PalResult;
 use crate::interface::{
-    Interface, InterfaceEvent, InterfaceEventStream, InterfaceId, InterfaceInfo, IpCidr,
+    Interface, InterfaceCounters, InterfaceEvent, InterfaceEventStream, InterfaceId, InterfaceInfo,
+    InterfaceStats, IpCidr,
 };
 use crate::mock::fault::FaultInjector;
 
@@ -28,6 +29,7 @@ use crate::mock::fault::FaultInjector;
 /// methods.
 pub struct MockInterfaces {
     state: Mutex<BTreeMap<InterfaceId, Interface>>,
+    counters: Mutex<BTreeMap<InterfaceId, InterfaceCounters>>,
     events: broadcast::Sender<InterfaceEvent>,
     faults: FaultInjector,
 }
@@ -41,6 +43,7 @@ impl MockInterfaces {
         let (events, _) = broadcast::channel(256);
         Self {
             state: Mutex::new(BTreeMap::new()),
+            counters: Mutex::new(BTreeMap::new()),
             events,
             faults: FaultInjector::default(),
         }
@@ -102,6 +105,16 @@ impl MockInterfaces {
         }
     }
 
+    /// Sets the traffic counters an interface reports, for driving the monitor
+    /// (WP-M0.10) from a test. Independent of the interface set: counters can be
+    /// bumped without emitting an [`InterfaceEvent`].
+    pub fn simulate_counters(&self, id: &InterfaceId, counters: InterfaceCounters) {
+        self.counters
+            .lock()
+            .expect("mock counters mutex")
+            .insert(id.clone(), counters);
+    }
+
     /// Renames an interface while keeping its stable id, emitting
     /// [`InterfaceEvent::Renamed`]. This is the F-13 case: the identity the
     /// daemon keys on is unchanged even though the OS name is different.
@@ -158,5 +171,30 @@ impl InterfaceInfo for MockInterfaces {
 
     fn watch(&self) -> InterfaceEventStream {
         self.events.subscribe()
+    }
+}
+
+#[async_trait]
+impl InterfaceStats for MockInterfaces {
+    async fn counters(&self, id: &InterfaceId) -> PalResult<Option<InterfaceCounters>> {
+        self.faults.check("interface.counters").await?;
+        // An interface that exists but has no scripted counters reports zeros;
+        // one that does not exist reports `None`.
+        let known = self
+            .state
+            .lock()
+            .expect("mock state mutex")
+            .contains_key(id);
+        if !known {
+            return Ok(None);
+        }
+        Ok(Some(
+            self.counters
+                .lock()
+                .expect("mock counters mutex")
+                .get(id)
+                .copied()
+                .unwrap_or_default(),
+        ))
     }
 }

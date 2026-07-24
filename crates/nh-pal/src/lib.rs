@@ -44,4 +44,7 @@ pub mod mock;
 // The most-used items at the crate root.
 pub use error::{PalError, PalResult};
 pub use guard::{Guard, Revert, Transaction};
-pub use interface::{Interface, InterfaceEvent, InterfaceId, InterfaceInfo, InterfaceKind, IpCidr};
+pub use interface::{
+    Interface, InterfaceCounters, InterfaceEvent, InterfaceId, InterfaceInfo, InterfaceKind,
+    InterfaceStats, IpCidr,
+};

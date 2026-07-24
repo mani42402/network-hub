@@ -26,9 +26,12 @@ nh-types = { path = "../nh-types" }
 async-trait = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
-# Interface change events use a broadcast channel, so the sync feature is always
-# needed by the trait definitions.
-tokio = { workspace = true, features = ["sync"] }
+# The shared interface-watch engine logs wake-source and enumeration failures.
+tracing = { workspace = true }
+# Interface change events use a broadcast channel (sync); the shared watch engine
+# adds a backstop timer (time) and select! (macros). Spawning the engine is the
+# backend's job, so `rt` is intentionally not pulled in here.
+tokio = { workspace = true, features = ["sync", "time", "macros"] }
 
 [dev-dependencies]
 # Tests drive async guards and the mock.
