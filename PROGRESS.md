@@ -22,7 +22,8 @@ M0's exit criterion is met. `main` holds the Phase 0 baseline.
 | M0.6 | `nh-daemon` — lifecycle, IPC (UDS/pipe), authorization, child supervision | ✅ CI-green 3-OS |
 | M0.7 | Service integration + boot-cleanup (F-2): units/plists, install scripts, Windows SCM + named-pipe transport | ✅ CI-green 3-OS; runtime `[you-verify]` per [ops/service.md](docs/ops/service.md) |
 | M0.8 | Capability probe framework (AD-6): `SystemProbe` per OS + `build_matrix` (§3.4), live `Capabilities` with re-probe + change event | ✅ CI-green 3-OS |
-| M0.9–M0.14 | PAL interface backends + watchers, monitor, CLI, UI, packaging, fault suite | pending |
+| M0.9 | `InterfaceInfo` + counters + watchers per OS (RTNETLINK / PF_ROUTE / NotifyIpInterfaceChange), shared diff/identity (F-13) watch engine | ✅ CI-green 3-OS; hotplug soak `[you-verify]` |
+| M0.10–M0.14 | monitor (live throughput), CLI + daemon-sim, Flutter UI, packaging, fault suite | pending |
 
 **M0 exit criterion:** fresh VM → install → live network state in the UI →
 uninstall → clean state-diff, on all three OSes.
