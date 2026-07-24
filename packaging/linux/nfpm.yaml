@@ -1,0 +1,42 @@
+# deb + rpm packaging for NetworkHub, built with nfpm (one config, both formats).
+# See packaging/linux/build.sh. The maintainer scriptlets create the networkhub
+# group, enable the services, and — critically — run the boot-cleanup deadman on
+# removal so the machine is left as it was (the uninstall contract, §13.5).
+#
+# Paths are resolved relative to the repository root, where build.sh runs nfpm.
+name: networkhub
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${NFPM_VERSION}
+version_schema: none
+section: net
+priority: optional
+maintainer: "NetworkHub maintainers <REPLACE-ME>"
+vendor: NetworkHub
+homepage: https://github.com/abdul-manan1/network-hub
+license: "MIT OR Apache-2.0"
+description: |
+  NetworkHub — cross-platform network management daemon and CLI.
+  The privileged daemon (networkhubd) manages hotspots, firewall, VPN, and DNS;
+  nh-cli is its unprivileged command-line client.
+
+contents:
+  - src: ${NFPM_BINDIR}/nh-daemon
+    dst: /usr/libexec/networkhub/nh-daemon
+    file_info:
+      mode: 0755
+  - src: ${NFPM_BINDIR}/nh-cli
+    dst: /usr/bin/nh-cli
+    file_info:
+      mode: 0755
+  - src: ${NFPM_ROOT}/packaging/linux-systemd/networkhub.service
+    dst: /usr/lib/systemd/system/networkhub.service
+    type: config|noreplace
+  - src: ${NFPM_ROOT}/packaging/linux-systemd/networkhub-cleanup.service
+    dst: /usr/lib/systemd/system/networkhub-cleanup.service
+    type: config|noreplace
+
+scripts:
+  postinstall: ${NFPM_ROOT}/packaging/linux/postinstall.sh
+  preremove: ${NFPM_ROOT}/packaging/linux/preremove.sh
+  postremove: ${NFPM_ROOT}/packaging/linux/postremove.sh
