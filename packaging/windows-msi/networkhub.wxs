@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  NetworkHub MSI (WiX Toolset v4). Installs the daemon + CLI per-machine and
+  registers the daemon as a Windows service. Unsigned/dev at this stage; real
+  Authenticode signing is M3 (PRE-1).
+
+  Build (on Windows, WiX v4 `wix` on PATH), from the repo root:
+    packaging\windows-msi\build.ps1
+  which passes -d BinDir=<release dir> and -d Version=<x.y.z>.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="NetworkHub"
+           Manufacturer="NetworkHub"
+           Version="$(var.Version)"
+           UpgradeCode="6f3a2c10-1b4e-4e9a-9c7d-2e5b8a1f0c33"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of NetworkHub is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="NetworkHub">
+
+        <!-- The privileged daemon, installed and started as a Windows service. -->
+        <Component Id="Daemon" Guid="*">
+          <File Id="nh_daemon.exe" Source="$(var.BinDir)\nh-daemon.exe" KeyPath="yes" />
+          <ServiceInstall Id="NetworkHubService"
+                          Name="networkhub"
+                          DisplayName="NetworkHub"
+                          Description="NetworkHub network management daemon."
+                          Type="ownProcess"
+                          Start="auto"
+                          ErrorControl="normal"
+                          Arguments="run"
+                          Vital="yes" />
+          <!-- Start on install; stop and remove on uninstall. -->
+          <ServiceControl Id="NetworkHubServiceControl"
+                          Name="networkhub"
+                          Start="install"
+                          Stop="both"
+                          Remove="uninstall"
+                          Wait="yes" />
+        </Component>
+
+        <!-- The unprivileged CLI client. -->
+        <Component Id="Cli" Guid="*">
+          <File Id="nh_cli.exe" Source="$(var.BinDir)\nh-cli.exe" KeyPath="yes" />
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="NetworkHub" Level="1">
+      <ComponentRef Id="Daemon" />
+      <ComponentRef Id="Cli" />
+    </Feature>
+  </Package>
+</Wix>

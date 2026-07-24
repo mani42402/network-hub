@@ -15,6 +15,11 @@ apps/desktop/ephemeral/
 .packages
 *.iml
 
+# Dart SDK package (generated client + wrapper): build artifacts and the
+# library lock are not tracked; the app (apps/desktop) commits its own lock.
+sdk/dart/.dart_tool/
+sdk/dart/pubspec.lock
+
 # TypeScript / Node
 node_modules/
 sdk/plugin-ts/dist/
@@ -80,3 +85,7 @@ spikes/**/target/
 spikes/**/.dart_tool/
 spikes/**/pubspec.lock
 spikes/**/generated/
+
+# TS SDK dependencies (protoc-gen-es etc.); generated code IS committed, deps are not
+sdk/typescript/node_modules/
+sdk/typescript/package-lock.json

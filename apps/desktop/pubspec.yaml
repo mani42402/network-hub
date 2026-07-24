@@ -1,0 +1,26 @@
+name: networkhub_desktop
+description: "NetworkHub desktop UI — an unprivileged gRPC client of the daemon."
+publish_to: 'none'
+version: 0.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # The generated daemon client (WP-M0.2). grpc/protobuf versions must match
+  # what protoc_plugin produced; they are pinned in the SDK package too.
+  networkhub_sdk:
+    path: ../../sdk/dart
+  grpc: ^5.1.0
+  protobuf: ^6.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

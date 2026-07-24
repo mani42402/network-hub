@@ -84,7 +84,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck
-          shellcheck tools/*.sh
+          find tools packaging tests -name '*.sh' -print0 | xargs -0 shellcheck
 
       - name: Install cargo-deny
         uses: taiki-e/install-action@v2
@@ -121,6 +121,13 @@ jobs:
       - name: Install pinned toolchain
         run: rustup show active-toolchain
 
+      # nh-proto's build.rs invokes protoc to generate the Rust bindings.
+      # Developers get it from tools/setup-*.sh; CI needs it installed here.
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
@@ -150,6 +157,11 @@ jobs:
         run: |
           rustup show active-toolchain
           rustup target add aarch64-unknown-linux-gnu
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cross-linker
         run: |
@@ -195,11 +207,51 @@ jobs:
 
       - name: Lint
         if: steps.check.outputs.present == 'true'
+        working-directory: proto
         run: buf lint
 
+      # Breaking-change check against main, using the already-checked-out repo
+      # (fetch-depth: 0 above gives us origin/main locally), so buf does not try
+      # to clone the remote. On the first PR that introduces protos, main's
+      # proto/ module has no .proto files and buf says so — not a breaking
+      # change, so it is treated as a pass. Later PRs are checked normally.
       - name: Breaking-change check against main
         if: steps.check.outputs.present == 'true' && github.event_name == 'pull_request'
-        run: buf breaking --against ".git#branch=origin/main"
+        run: |
+          if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+            echo "no origin/main ref available; skipping breaking check"
+            exit 0
+          fi
+          cd proto
+          if buf breaking --against "../.git#ref=origin/main,subdir=proto" 2>breaking.err; then
+            echo "no breaking changes"
+          elif grep -q "no .proto files" breaking.err; then
+            echo "main has no proto baseline yet (first introduction); nothing to break"
+          else
+            cat breaking.err
+            exit 1
+          fi
+
+      # Codegen freshness (ADR-0013): regenerate the committed Dart/TS clients
+      # and fail if they differ from what is checked in. A .proto edit without a
+      # matching regeneration cannot merge.
+      - name: Set up Dart
+        if: steps.check.outputs.present == 'true'
+        uses: dart-lang/setup-dart@v1
+
+      - name: Set up Node
+        if: steps.check.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Dart proto plugin
+        if: steps.check.outputs.present == 'true'
+        run: dart pub global activate protoc_plugin
+
+      - name: Verify generated clients are up to date
+        if: steps.check.outputs.present == 'true'
+        run: tools/verify-proto-codegen.sh
 
   # ---------------------------------------------------------------------------
   # Desktop UI. Skips cleanly until WP-M0.12 creates the Flutter app.

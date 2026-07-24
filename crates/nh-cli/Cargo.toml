@@ -13,3 +13,23 @@ publish = false
 workspace = true
 
 [dependencies]
+# The CLI is a pure gRPC client: it uses nh-proto's generated stubs and never
+# depends on the daemon crate (which must stay a leaf — see tools/xtask).
+nh-proto = { path = "../nh-proto" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "signal"] }
+tonic = { workspace = true }
+tower = { version = "0.5" }
+http = { version = "1" }
+# TokioIo adapts a UnixStream / NamedPipeClient to hyper's IO traits (both OSes).
+hyper-util = { version = "0.1", features = ["tokio"] }
+
+[dev-dependencies]
+# Integration tests run the CLI against a real daemon. Dev-dependency only, so
+# the layer checker's "nothing depends on the daemon" rule still holds.
+nh-daemon = { path = "../nh-daemon" }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full"] }

@@ -13,3 +13,52 @@ publish = false
 workspace = true
 
 [dependencies]
+# Internal crates. nh-daemon is the composition root: the one crate that wires
+# concrete backends together (it will select a pal-* backend from WP-M0.8).
+nh-types = { path = "../nh-types" }
+nh-proto = { path = "../nh-proto" }
+nh-state = { path = "../nh-state", features = ["persist"] }
+# The capability-probe framework (AD-6); the per-OS backends are wired below.
+nh-pal = { path = "../nh-pal" }
+
+async-trait = { workspace = true }
+clap = { workspace = true }
+prost = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tonic = { workspace = true }
+tonic-prost = { workspace = true }
+tower = { version = "0.5" }
+http = { version = "1" }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Safe Unix process-group signalling for child supervision (no unsafe needed).
+[target.'cfg(unix)'.dependencies]
+# signal/process: child process-group kill; fs: the singleton flock; user: getuid
+# for the default principal resolver.
+nix = { version = "0.29", features = ["signal", "process", "fs", "user"] }
+
+# The concrete PAL backends: the composition root selects one per target OS to
+# gather capability facts (and, on Windows, the IPC transport + SCM service).
+# Wiring a real backend is allowed only for the composition root by the layer
+# checker (AD-7, tools/xtask).
+[target.'cfg(target_os = "linux")'.dependencies]
+pal-linux = { path = "../nh-pal/pal-linux" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+pal-macos = { path = "../nh-pal/pal-macos" }
+
+[target.'cfg(windows)'.dependencies]
+pal-windows = { path = "../nh-pal/pal-windows" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
+# The end-to-end IPC test needs a gRPC client over a Unix socket: a custom
+# tonic connector wrapping a UnixStream via hyper-util's TokioIo adapter.
+hyper-util = { version = "0.1", features = ["tokio"] }

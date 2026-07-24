@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+// NetworkHub public API, version 1.
+//
+// These .proto files are the single source of truth for every client — the
+// Rust daemon and CLI, the Flutter desktop app, the TypeScript SDK, and the
+// REST gateway all generate from here (ADR-0013). Additive evolution only
+// within v1; a breaking change requires a v2 package, and `buf breaking` in CI
+// enforces it.
+package networkhub.v1;
+
+import "google/protobuf/descriptor.proto";
+
+// --------------------------------------------------------------------------
+// Per-RPC permission annotation.
+//
+// Every RPC declares the permission a caller must hold, as a method option the
+// authorization interceptor reads (ARCHITECTURE.md §6.1, §10.3). Because the
+// permission lives on the RPC itself, the enforcement and the documentation
+// cannot drift apart, and a test asserts that no RPC is left unannotated — which
+// closes the "forgot to lock down the dangerous method" bug class permanently.
+extend google.protobuf.MethodOptions {
+  // The permission required to call this RPC. Required on every RPC.
+  Permission required_permission = 50001;
+}
+
+// The set of permissions a principal can hold. Coarser than one-per-RPC on
+// purpose: roles grant permissions, and a readable matrix beats a sprawling
+// list. Read permissions gate observing state; write permissions gate changing
+// it; the ADMIN_* permissions gate security-sensitive operations that also
+// require recent re-auth on remote sessions (§10.3).
+enum Permission {
+  // Never valid as a requirement. Its presence on an RPC is a bug the
+  // annotation-coverage test rejects, so a zero-value default cannot slip
+  // through as "no permission needed".
+  PERMISSION_UNSPECIFIED = 0;
+
+  // Read-only observation of non-sensitive state: capabilities, health,
+  // interfaces, live metrics. The default for a viewer.
+  PERMISSION_SYSTEM_READ = 1;
+
+  // Read device inventory and status.
+  PERMISSION_DEVICE_READ = 2;
+  // Change device state: block, pause, rename, set quotas.
+  PERMISSION_DEVICE_WRITE = 3;
+
+  // Read VPN profiles and status.
+  PERMISSION_VPN_READ = 4;
+  // Manage VPN profiles and connections.
+  PERMISSION_VPN_WRITE = 5;
+
+  // Read hotspot profiles and status.
+  PERMISSION_HOTSPOT_READ = 6;
+  // Manage hotspot profiles and lifecycle.
+  PERMISSION_HOTSPOT_WRITE = 7;
+
+  // Read firewall rules.
+  PERMISSION_FIREWALL_READ = 8;
+  // Change firewall rules. Security-sensitive.
+  PERMISSION_FIREWALL_WRITE = 9;
+
+  // Administer security-sensitive settings: enable the gateway, install
+  // plugins, export secrets, set a persistent kill switch. Requires recent
+  // re-auth on remote sessions (§10.3).
+  PERMISSION_ADMIN = 10;
+}
+
+// --------------------------------------------------------------------------
+// Shared value types, mirroring the nh-types domain vocabulary so the wire
+// forms match what the daemon already speaks internally.
+
+// Overall serving state of the daemon or one of its modules. Shared by
+// SystemService.GetHealth and the event stream's health events.
+enum ServingStatus {
+  SERVING_STATUS_UNSPECIFIED = 0;
+  // Fully operational.
+  SERVING_STATUS_SERVING = 1;
+  // Running but a module is impaired; details accompany it.
+  SERVING_STATUS_DEGRADED = 2;
+  // Not able to serve.
+  SERVING_STATUS_NOT_SERVING = 3;
+}
+
+// A capability's usability (AD-6). Mirrors nh_types::CapabilityStatus.
+enum CapabilityStatus {
+  CAPABILITY_STATUS_UNSPECIFIED = 0;
+  // Fully usable on this machine.
+  CAPABILITY_STATUS_SUPPORTED = 1;
+  // Usable with limitations the reason/details explain.
+  CAPABILITY_STATUS_DEGRADED = 2;
+  // Not usable here; the reason says why.
+  CAPABILITY_STATUS_UNSUPPORTED = 3;
+  // Not yet probed; distinct from unsupported.
+  CAPABILITY_STATUS_UNKNOWN = 4;
+}
+
+// One entry in the capability matrix (AD-6). Mirrors nh_types::Capability.
+message Capability {
+  CapabilityStatus status = 1;
+  // Human-readable explanation, shown in the UI. Always present.
+  string reason = 2;
+  // Optional structured specifics (supported bands, client-count caps, the name
+  // of a conflicting service).
+  map<string, string> details = 3;
+}
+
+// The error contract that accompanies a failed RPC in its status details
+// (ARCHITECTURE.md §6.3). Mirrors nh_types::DomainError. The transport status
+// code carries the coarse ErrorCode; this message carries the specifics the UI
+// renders.
+message ErrorInfo {
+  // Stable machine-readable slug, e.g. "hotspot.subnet_conflict".
+  string reason = 1;
+  // Human sentence describing what went wrong. Always present.
+  string detail = 2;
+  // Optional human sentence telling the user how to fix it; the UI renders it.
+  string remediation = 3;
+}
+
+// A quantity of bytes. Exact; formatting happens in clients.
+message ByteCount {
+  uint64 bytes = 1;
+}
+
+// A throughput in bits per second. Exact; clients format in decimal units.
+message BitRate {
+  uint64 bits_per_sec = 1;
+}

@@ -13,3 +13,10 @@ publish = false
 workspace = true
 
 [dependencies]
+prost = { workspace = true }
+prost-reflect = { workspace = true }
+tonic = { workspace = true }
+tonic-prost = { workspace = true }
+
+[build-dependencies]
+tonic-prost-build = { workspace = true }

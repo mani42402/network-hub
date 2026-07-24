@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package networkhub.v1;
+
+import "networkhub/v1/common.proto";
+
+// Live and historical monitoring. For M0 this is the network interface list and
+// a live throughput stream — the first real data the walking-skeleton UI renders
+// (WP-M0.10, WP-M0.12). Historical queries and per-device metrics arrive in M2.
+service MonitorService {
+  // Lists the machine's network interfaces with their current addresses and
+  // link state. A point-in-time query; changes arrive via the event stream.
+  rpc ListInterfaces(ListInterfacesRequest) returns (ListInterfacesResponse) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+
+  // Streams live throughput samples. Follows the snapshot-first contract
+  // (events.proto): the first message carries current per-interface rates, then
+  // updates flow at the sampling interval.
+  rpc StreamThroughput(StreamThroughputRequest) returns (stream ThroughputSample) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+}
+
+message ListInterfacesRequest {}
+
+message ListInterfacesResponse {
+  repeated Interface interfaces = 1;
+}
+
+// A network interface. Identity is the stable `id`, not the OS name, because
+// names change across re-plug and predictable-naming schemes (F-13); the name
+// is shown to the user but not relied on.
+message Interface {
+  // Stable identity resolved by the daemon (F-13), safe to key on.
+  string id = 1;
+  // Human-facing OS name, e.g. "en0", "eth0", "Wi-Fi".
+  string name = 2;
+  InterfaceKind kind = 3;
+  bool is_up = 4;
+  // MAC address in canonical lower-case colon form, if the interface has one.
+  string mac = 5;
+  // Assigned IP addresses in CIDR form, e.g. "192.168.1.5/24", "fe80::1/64".
+  repeated string addresses = 6;
+}
+
+enum InterfaceKind {
+  INTERFACE_KIND_UNSPECIFIED = 0;
+  INTERFACE_KIND_ETHERNET = 1;
+  INTERFACE_KIND_WIFI = 2;
+  INTERFACE_KIND_LOOPBACK = 3;
+  // A VPN tunnel interface (utun/wintun/wg).
+  INTERFACE_KIND_TUNNEL = 4;
+  // A virtual/bridge interface, e.g. a hotspot bridge.
+  INTERFACE_KIND_VIRTUAL = 5;
+  INTERFACE_KIND_OTHER = 6;
+}
+
+message StreamThroughputRequest {
+  // Interface ids to report. Empty means all non-loopback interfaces.
+  repeated string interface_ids = 1;
+}
+
+// One throughput sample across the requested interfaces. Sent at the sampling
+// interval; the first sample after subscription is the snapshot.
+message ThroughputSample {
+  // Milliseconds since the Unix epoch, from a monotonic-corrected clock so a
+  // wall-clock jump does not produce absurd rates (E-26, F-11).
+  int64 unix_millis = 1;
+  repeated InterfaceThroughput interfaces = 2;
+}
+
+message InterfaceThroughput {
+  string interface_id = 1;
+  // Instantaneous rates, derived from counter deltas with wrap detection so a
+  // rate is never negative (E-25).
+  BitRate rx = 2;
+  BitRate tx = 3;
+  // Cumulative counters since the interface came up, for totals.
+  ByteCount rx_total = 4;
+  ByteCount tx_total = 5;
+}

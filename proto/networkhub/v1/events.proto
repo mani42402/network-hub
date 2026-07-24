@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package networkhub.v1;
+
+import "networkhub/v1/common.proto";
+
+// The event stream and the streaming contract every subscription in NetworkHub
+// follows (ARCHITECTURE.md §5.4).
+//
+// The contract, expressed in the types below so clients cannot get it wrong:
+//
+//   1. Every stream's FIRST message is a full SNAPSHOT of current state.
+//   2. Subsequent messages are DELTAS applied on top of the snapshot.
+//   3. Every message carries a monotonically increasing sequence number.
+//
+// A client that reconnects starts a fresh stream, receives a new snapshot, and
+// discards whatever it held — so a dropped connection can never leave a client
+// showing stale data as if it were live. Slow clients may miss deltas (the
+// daemon drops events for a stalled subscriber rather than let it back-pressure
+// the engine); the snapshot-on-connect is what lets them recover.
+service EventService {
+  // Subscribes to the daemon-wide event stream. The first StreamMessage is a
+  // Snapshot; the rest are Deltas.
+  rpc Subscribe(SubscribeRequest) returns (stream StreamMessage) {
+    option (required_permission) = PERMISSION_SYSTEM_READ;
+  }
+}
+
+message SubscribeRequest {
+  // Topics to receive. Empty means all topics the caller is permitted to see.
+  // A client is still delivered a snapshot scoped to these topics first.
+  repeated EventTopic topics = 1;
+}
+
+// The categories of event a client can subscribe to. A subscription is filtered
+// to the caller's permissions regardless of what is requested.
+enum EventTopic {
+  EVENT_TOPIC_UNSPECIFIED = 0;
+  // Device joined/left/changed.
+  EVENT_TOPIC_DEVICES = 1;
+  // VPN connection state transitions.
+  EVENT_TOPIC_VPN = 2;
+  // Hotspot lifecycle transitions.
+  EVENT_TOPIC_HOTSPOT = 3;
+  // Capability matrix changed (hardware added/removed).
+  EVENT_TOPIC_CAPABILITIES = 4;
+  // A module changed health (e.g. entered degraded/conflicted).
+  EVENT_TOPIC_HEALTH = 5;
+  // A conflict was detected with another network agent (§5.3).
+  EVENT_TOPIC_CONFLICTS = 6;
+}
+
+// The envelope every streamed message uses. Exactly one of snapshot/delta is
+// set, and `sequence` orders them.
+message StreamMessage {
+  // Monotonically increasing within a stream. The snapshot carries the sequence
+  // current at subscription time; each delta increments it. A gap means the
+  // client missed a delta and, if it cares, should re-subscribe for a fresh
+  // snapshot.
+  uint64 sequence = 1;
+
+  oneof payload {
+    // Always the first message on a stream: the complete current state for the
+    // subscribed topics.
+    Snapshot snapshot = 2;
+    // An incremental change applied on top of the snapshot.
+    Delta delta = 3;
+  }
+}
+
+// The complete current state at subscription time. For M0 this carries only the
+// capability matrix and module health; feature milestones extend it (devices,
+// VPN, hotspot) as those modules land.
+message Snapshot {
+  map<string, Capability> capabilities = 1;
+  repeated ModuleHealthEvent module_health = 2;
+}
+
+// A single incremental change. Exactly one field is set. New event kinds are
+// added here additively as features land.
+message Delta {
+  oneof event {
+    CapabilityChanged capability_changed = 1;
+    ModuleHealthEvent module_health_changed = 2;
+    ConflictDetected conflict_detected = 3;
+  }
+}
+
+// A capability's status changed (e.g. a USB Wi-Fi adapter was plugged in).
+message CapabilityChanged {
+  // The dotted capability key, e.g. "hotspot.wifi_ap".
+  string key = 1;
+  Capability capability = 2;
+}
+
+// A module's health changed.
+message ModuleHealthEvent {
+  string module = 1;
+  ServingStatus status = 2;
+  string detail = 3;
+}
+
+// Another network agent (firewalld, an antivirus product, a policy script) was
+// detected repeatedly reverting NetworkHub state; the reconciler stopped
+// fighting and marked the module conflicted (§5.3).
+message ConflictDetected {
+  string module = 1;
+  // A human description of the apparent conflict and the suspected cause.
+  string detail = 2;
+}

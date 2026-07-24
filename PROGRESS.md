@@ -6,7 +6,39 @@ follows: **state what was proven and where, and state plainly what was not.**
 
 ---
 
-## Current: Phase 0 — Foundations (complete pending remote/hardware verification)
+## Current: Milestone M0 — Walking Skeleton (in progress)
+
+Work happens on branch `phase/m0-walking-skeleton` (PR #2 to `main`); each work
+package is a commit, CI gates every push, and the branch merges to `main` when
+M0's exit criterion is met. `main` holds the Phase 0 baseline.
+
+| WP | What | Status |
+|----|------|--------|
+| M0.1 | `nh-types` — domain vocabulary, `Secret<T>`, errors, capabilities | ✅ CI-green 3-OS |
+| M0.2 | `nh-proto` — API contracts, Rust/Dart/TS codegen, provable authz coverage | ✅ CI-green 3-OS |
+| M0.3 | `nh-pal` — 7 PAL traits + mock with fault injection | ✅ CI-green 3-OS |
+| M0.4 | `nh-state` — desired-state store, reconciler, event bus, intent journal | ✅ CI-green 3-OS |
+| M0.5 | `config.db` — storage, migrations, resilience | ✅ CI-green 3-OS |
+| M0.6 | `nh-daemon` — lifecycle, IPC (UDS/pipe), authorization, child supervision | ✅ CI-green 3-OS |
+| M0.7 | Service integration + boot-cleanup (F-2): units/plists, install scripts, Windows SCM + named-pipe transport | ✅ CI-green 3-OS; runtime `[you-verify]` per [ops/service.md](docs/ops/service.md) |
+| M0.8 | Capability probe framework (AD-6): `SystemProbe` per OS + `build_matrix` (§3.4), live `Capabilities` with re-probe + change event | ✅ CI-green 3-OS |
+| M0.9 | `InterfaceInfo` + counters + watchers per OS (RTNETLINK / PF_ROUTE / NotifyIpInterfaceChange), shared diff/identity (F-13) watch engine | ✅ CI-green 3-OS; hotplug soak `[you-verify]` |
+| M0.10 | `nh-monitor` (live throughput): monotonic-clock rate derivation (E-25/E-26), per-interface ring buffer, broadcast stream API | ✅ CI-green 3-OS; 5%-accuracy check `[you-verify]` |
+| M0.11 | `daemon-sim` (unprivileged daemon) + `nh-cli` (status/capabilities/doctor/debug-tasks, `--json`) over UDS/named-pipe | ✅ CI-green 3-OS; Windows pipe client runtime `[you-verify]` |
+| M0.12 | Flutter desktop app: `networkhub_sdk` Dart client + capability-matrix UI (renders from AD-6, no platform conditionals), gRPC over UDS to `daemon-sim` | ✅ analyze + 3 widget tests green; live UDS connect verified locally; Windows pipe client + packaged GUI `[you-verify]` |
+| M0.13 | Packaging v0: deb+rpm (nfpm), DMG (hdiutil), MSI (WiX v4), AppImage; maintainer scriptlets = uninstall contract; nightly `uninstall-contract.sh` (Linux full, mac/win skip) | ✅ deb/rpm/DMG build locally; MSI/AppImage authored; VM diff-clean gate `[you-verify]` |
+| M0.14 | Fault-injection suite v1: AD-5 fail-open invariant across every crash point in the write-ahead flow + explicit F-1/F-3/F-9/F-12 tests (F-4/F-5/F-13 in their crates); nightly `tests/fault/run.sh` | ✅ CI-green 3-OS |
+
+**M0 complete** — the walking skeleton runs end-to-end on all three OSes. The
+fresh-VM install → use → uninstall → clean state-diff gate is `[you-verify]` on
+your machines (see [ops/packaging.md](docs/ops/packaging.md)).
+
+**M0 exit criterion:** fresh VM → install → live network state in the UI →
+uninstall → clean state-diff, on all three OSes.
+
+---
+
+## Phase 0 — Foundations (complete)
 
 All six Phase 0 work packages are implemented and committed. Two exit criteria
 remain open because they need resources this development machine (macOS, no root,

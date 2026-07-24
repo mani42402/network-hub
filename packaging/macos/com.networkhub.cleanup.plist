@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Boot-time cleanup LaunchDaemon (F-2). A run-once job that reclaims NetworkHub
+  state left by a previous boot, then exits. launchd offers no strict ordering
+  before another daemon, so this runs at load and the main daemon also runs its
+  own startup deadman — the reliable second line.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.networkhub.cleanup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/libexec/networkhub/nh-daemon</string>
+        <string>cleanup</string>
+        <string>--dir</string>
+        <string>/var/run/networkhub</string>
+        <string>--json</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Run once at boot, do not keep alive. -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>UserName</key>
+    <string>root</string>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/networkhub-cleanup.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/networkhub-cleanup.log</string>
+</dict>
+</plist>

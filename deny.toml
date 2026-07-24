@@ -54,7 +54,12 @@ exceptions = []
 
 [bans]
 multiple-versions = "warn"
+# Third-party wildcard versions are banned (they make builds unreproducible),
+# but internal crates are path dependencies with no version, which cargo-deny
+# counts as wildcards. Those are legitimate — the workspace pins everything —
+# so path wildcards are allowed while external ones stay denied.
 wildcards = "deny"
+allow-wildcard-paths = true
 # Dependencies we never want, with the reason recorded at the point of refusal.
 deny = [
     # We are a TLS-terminating product; rustls is the chosen stack. Pulling in
