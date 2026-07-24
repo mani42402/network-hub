@@ -266,22 +266,26 @@ fn corrupt_file(path: &std::path::Path) {
     // garbage and restore a *healthy* database, and the reopen would (flakily)
     // report `Healthy` instead of detecting corruption. (On Unix the delete
     // succeeds immediately; the loop is a no-op there.)
-    let mut removed = false;
-    for attempt in 0..250 {
+    // Wait — up to a generous deadline — until the OS lets us delete the file,
+    // i.e. until SQLite's async close has fully released the handle and any
+    // Windows AV scan of the just-written file has finished. After a backup
+    // (VACUUM INTO writes the whole db) this can take several seconds on a loaded
+    // CI runner, so a fixed small iteration budget occasionally under-waits. On
+    // Unix the first delete succeeds immediately.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
         match std::fs::remove_file(path) {
-            Ok(()) => {
-                removed = true;
-                break;
+            Ok(()) => break,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
+            Err(e) => {
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "could not delete db to corrupt it within 30s: {e}"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                removed = true;
-                break;
-            }
-            Err(e) if attempt == 249 => panic!("could not delete db to corrupt it: {e}"),
-            Err(_) => std::thread::sleep(std::time::Duration::from_millis(20)),
         }
     }
-    assert!(removed, "db file must be gone before we write garbage");
 
     // Now nothing holds the path: write garbage that has no valid SQLite header.
     let mut f = std::fs::File::create(path).unwrap();
