@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/lib.sh"
 
 FAIL=0
-# shellcheck disable=SC2329  # invoked indirectly via trap
+# shellcheck disable=SC2329,SC2317  # defined + reached only via the trap below
 cleanup() {
     netns_teardown_all
     netns_hwsim_unload

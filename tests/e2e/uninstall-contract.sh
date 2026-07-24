@@ -10,9 +10,9 @@
 #   state-diff snapshot after.json
 #   state-diff diff before.json after.json   # exit 0 required
 #
-# Linux runs the full contract against the deb. The macOS/Windows package-install
-# flows need on-target validation and are a WP-M0.13 follow-up; they skip cleanly
-# so the job is honest about what it does and does not yet cover.
+# Linux runs the full contract against the deb. The macOS DMG and Windows MSI
+# install flows need on-target validation and are a WP-M0.13 follow-up; they skip
+# cleanly so the job is honest about what it does and does not yet cover.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -22,43 +22,10 @@ trap 'rm -rf "$WORK"' EXIT
 
 NFPM_VERSION=2.47.0
 
-ensure_nfpm() {
-    command -v nfpm >/dev/null 2>&1 && return 0
-    echo "==> installing nfpm ${NFPM_VERSION}"
-    curl -fsSL \
-        "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.deb" \
-        -o "$WORK/nfpm.deb"
-    sudo dpkg -i "$WORK/nfpm.deb"
-}
-
-contract_linux() {
-    ensure_nfpm
-    packaging/linux/build.sh "$WORK/pkg"
-    deb="$(find "$WORK/pkg" -name '*.deb' | head -1)"
-    [ -n "$deb" ] || { echo "no .deb produced" >&2; exit 2; }
-
-    echo "==> installing $deb"
-    sudo dpkg -i "$deb"
-    test -x /usr/libexec/networkhub/nh-daemon
-    test -x /usr/bin/nh-cli
-
-    echo "==> using it"
-    nh-cli --help >/dev/null 2>&1 || true
-
-    echo "==> uninstalling (purge)"
-    sudo dpkg --purge networkhub
-    test ! -e /usr/libexec/networkhub/nh-daemon
-}
-
-echo "==> building state-diff + binaries"
-cargo build --release -p state-diff -p nh-daemon -p nh-cli
-diff_bin="$ROOT/target/release/state-diff"
-
-echo "==> snapshot (before)"
-"$diff_bin" snapshot "$WORK/before.json"
-
+# Non-Linux: the packaged-install flow is not wired yet. Skip cleanly, before
+# building anything, so the nightly job stays honest about its coverage.
 case "$(uname -s)" in
-    Linux) contract_linux ;;
+    Linux) ;;
     Darwin)
         echo "::warning::macOS DMG/SMAppService install test is a WP-M0.13 follow-up; skipping."
         exit 0
@@ -68,6 +35,40 @@ case "$(uname -s)" in
         exit 0
         ;;
 esac
+
+echo "==> building state-diff + binaries"
+cargo build --release -p state-diff -p nh-daemon -p nh-cli
+diff_bin="$ROOT/target/release/state-diff"
+
+echo "==> snapshot (before)"
+"$diff_bin" snapshot "$WORK/before.json"
+
+if ! command -v nfpm >/dev/null 2>&1; then
+    echo "==> installing nfpm ${NFPM_VERSION}"
+    curl -fsSL \
+        "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.deb" \
+        -o "$WORK/nfpm.deb"
+    sudo dpkg -i "$WORK/nfpm.deb"
+fi
+
+packaging/linux/build.sh "$WORK/pkg"
+deb="$(find "$WORK/pkg" -name '*.deb' | head -1)"
+[ -n "$deb" ] || {
+    echo "no .deb produced" >&2
+    exit 2
+}
+
+echo "==> installing $deb"
+sudo dpkg -i "$deb"
+test -x /usr/libexec/networkhub/nh-daemon
+test -x /usr/bin/nh-cli
+
+echo "==> using it"
+nh-cli --help >/dev/null 2>&1 || true
+
+echo "==> uninstalling (purge)"
+sudo dpkg --purge networkhub
+test ! -e /usr/libexec/networkhub/nh-daemon
 
 echo "==> snapshot (after)"
 "$diff_bin" snapshot "$WORK/after.json"
