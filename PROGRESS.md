@@ -23,7 +23,8 @@ M0's exit criterion is met. `main` holds the Phase 0 baseline.
 | M0.7 | Service integration + boot-cleanup (F-2): units/plists, install scripts, Windows SCM + named-pipe transport | ✅ CI-green 3-OS; runtime `[you-verify]` per [ops/service.md](docs/ops/service.md) |
 | M0.8 | Capability probe framework (AD-6): `SystemProbe` per OS + `build_matrix` (§3.4), live `Capabilities` with re-probe + change event | ✅ CI-green 3-OS |
 | M0.9 | `InterfaceInfo` + counters + watchers per OS (RTNETLINK / PF_ROUTE / NotifyIpInterfaceChange), shared diff/identity (F-13) watch engine | ✅ CI-green 3-OS; hotplug soak `[you-verify]` |
-| M0.10–M0.14 | monitor (live throughput), CLI + daemon-sim, Flutter UI, packaging, fault suite | pending |
+| M0.10 | `nh-monitor` (live throughput): monotonic-clock rate derivation (E-25/E-26), per-interface ring buffer, broadcast stream API | ✅ CI-green 3-OS; 5%-accuracy check `[you-verify]` |
+| M0.11–M0.14 | CLI + daemon-sim, Flutter UI, packaging, fault suite | pending |
 
 **M0 exit criterion:** fresh VM → install → live network state in the UI →
 uninstall → clean state-diff, on all three OSes.

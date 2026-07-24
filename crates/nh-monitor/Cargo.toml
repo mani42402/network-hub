@@ -13,3 +13,14 @@ publish = false
 workspace = true
 
 [dependencies]
+# The monitor reads the InterfaceStats counters and lists interfaces via the PAL
+# traits; it never touches a concrete backend (AD-7).
+nh-pal = { path = "../nh-pal" }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "time", "macros"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+# Tests drive the sampler through the mock interface backend.
+nh-pal = { path = "../nh-pal", features = ["mock"] }
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time"] }
