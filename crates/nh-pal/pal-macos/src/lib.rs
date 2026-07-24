@@ -9,7 +9,11 @@
 //! is an empty stub so the workspace still builds everywhere.
 
 #[cfg(target_os = "macos")]
+pub mod interfaces;
+#[cfg(target_os = "macos")]
 pub mod probe;
 
+#[cfg(target_os = "macos")]
+pub use interfaces::MacosInterfaces;
 #[cfg(target_os = "macos")]
 pub use probe::MacosProbe;

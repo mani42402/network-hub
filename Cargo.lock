@@ -1159,8 +1159,13 @@ dependencies = [
 name = "pal-macos"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "libc",
  "nh-pal",
+ "nh-types",
  "nix",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
