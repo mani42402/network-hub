@@ -72,10 +72,10 @@ fn classify(name: &str, flags: InterfaceFlags) -> InterfaceKind {
     }
     let base = Path::new("/sys/class/net").join(name);
     // ARPHRD_LOOPBACK is 772; a loopback that somehow lacks the flag is caught here.
-    if let Ok(t) = std::fs::read_to_string(base.join("type")) {
-        if t.trim() == "772" {
-            return InterfaceKind::Loopback;
-        }
+    if let Ok(t) = std::fs::read_to_string(base.join("type"))
+        && t.trim() == "772"
+    {
+        return InterfaceKind::Loopback;
     }
     // A `wireless` directory or `phy80211` link marks an 802.11 device.
     if base.join("wireless").is_dir() || base.join("phy80211").exists() {
