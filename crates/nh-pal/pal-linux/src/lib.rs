@@ -9,7 +9,11 @@
 //! is an empty stub so the workspace still builds everywhere.
 
 #[cfg(target_os = "linux")]
+pub mod interfaces;
+#[cfg(target_os = "linux")]
 pub mod probe;
 
+#[cfg(target_os = "linux")]
+pub use interfaces::LinuxInterfaces;
 #[cfg(target_os = "linux")]
 pub use probe::LinuxProbe;
