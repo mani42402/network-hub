@@ -52,30 +52,27 @@ check "netns harness"     true netns_present
 check "proto"             true proto_present
 check "flutter app"       true flutter_present
 check "uninstall harness" true uninst_present
+check "fault harness"     true fault_present
 
 echo
 echo "Not-yet-present harnesses — their jobs should SKIP today:"
-check "fuzz targets"      false fuzz_present
-check "fault harness"     false fault_present
-check "soak harness"      false soak_present
+check "fuzz targets" false fuzz_present
+check "soak harness" false soak_present
 
 echo
 echo "With inputs present — every job should RUN:"
-mkdir -p tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
-touch_temp tests/fault/run.sh
+mkdir -p tests/e2e crates/nh-dns/fuzz/fuzz_targets
 touch_temp tests/e2e/soak.sh
 
-check "fuzz targets"      true fuzz_present
-check "fault harness"     true fault_present
-check "soak harness"      true soak_present
+check "fuzz targets" true fuzz_present
+check "soak harness" true soak_present
 
 cleanup
 rmdir crates/nh-dns/fuzz/fuzz_targets crates/nh-dns/fuzz 2>/dev/null || true
 
 echo
 echo "Back to clean — should SKIP again:"
-check "fuzz targets"  false fuzz_present
-check "fault harness" false fault_present
+check "fuzz targets" false fuzz_present
 
 echo
 echo "skip logic: $PASS passed, $FAIL failed"
