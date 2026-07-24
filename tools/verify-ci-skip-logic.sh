@@ -48,28 +48,26 @@ touch_temp() {
 # Harnesses that already exist as committed fixtures. As each work package lands
 # its harness, move it from the "not yet present" group to here.
 echo "Permanent fixtures — their jobs should RUN:"
-check "netns harness" true netns_present
-check "proto"         true proto_present
-check "flutter app"   true flutter_present
+check "netns harness"     true netns_present
+check "proto"             true proto_present
+check "flutter app"       true flutter_present
+check "uninstall harness" true uninst_present
 
 echo
 echo "Not-yet-present harnesses — their jobs should SKIP today:"
 check "fuzz targets"      false fuzz_present
 check "fault harness"     false fault_present
 check "soak harness"      false soak_present
-check "uninstall harness" false uninst_present
 
 echo
 echo "With inputs present — every job should RUN:"
 mkdir -p tests/fault tests/e2e crates/nh-dns/fuzz/fuzz_targets
 touch_temp tests/fault/run.sh
 touch_temp tests/e2e/soak.sh
-touch_temp tests/e2e/uninstall-contract.sh
 
 check "fuzz targets"      true fuzz_present
 check "fault harness"     true fault_present
 check "soak harness"      true soak_present
-check "uninstall harness" true uninst_present
 
 cleanup
 rmdir crates/nh-dns/fuzz/fuzz_targets crates/nh-dns/fuzz 2>/dev/null || true
