@@ -1356,6 +1356,13 @@ version = "0.0.0"
 [[package]]
 name = "nh-vpn"
 version = "0.0.0"
+dependencies = [
+ "base64",
+ "nh-types",
+ "tempfile",
+ "thiserror",
+ "zeroize",
+]
 
 [[package]]
 name = "nix"

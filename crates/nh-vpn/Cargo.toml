@@ -13,3 +13,11 @@ publish = false
 workspace = true
 
 [dependencies]
+# Secret<T> (zeroizing, no-Debug key material) + the domain error taxonomy.
+nh-types = { path = "../nh-types" }
+base64 = { workspace = true }
+thiserror = { workspace = true }
+zeroize = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

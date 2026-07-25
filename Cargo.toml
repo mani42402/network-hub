@@ -102,6 +102,9 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # BLAKE3 for the audit log's tamper-evident hash chain (§10.4).
 blake3 = "1"
+# Base64 for WireGuard key validation (keys are base64-encoded 32-byte Curve25519
+# material) and OpenVPN inline-block handling. RustCrypto-adjacent, permissive.
+base64 = "0.22"
 # Regex: the belt-and-braces log redaction scrub (§15), behind the compile-time
 # Secret<T> guarantee. Also the eventual home for network-facing parsers.
 regex = "1"
