@@ -34,6 +34,9 @@ dbg_macro = "warn"
 [target.'cfg(target_os = "linux")'.dependencies]
 nh-pal = { path = ".." }
 nh-types = { path = "../../nh-types" }
+# The Keyring trait the Secret Service backend implements (WP-M1.1). nh-secrets
+# has no platform deps, so this boundary edge is acyclic.
+nh-secrets = { path = "../../nh-secrets" }
 async-trait = { workspace = true }
 # net: getifaddrs (probe); socket: the RTNETLINK change-watch socket. feature:
 # uname. user: euid.
@@ -43,6 +46,7 @@ nix = { version = "0.29", features = ["net", "socket", "feature", "user"] }
 libc = "0.2"
 tokio = { workspace = true, features = ["rt", "sync"] }
 tracing = { workspace = true }
+secret-service = { version = "5.1.0", default-features = false, features = ["rt-tokio-crypto-rust"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros", "sync", "time"] }
