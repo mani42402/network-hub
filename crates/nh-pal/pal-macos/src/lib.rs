@@ -11,9 +11,13 @@
 #[cfg(target_os = "macos")]
 pub mod interfaces;
 #[cfg(target_os = "macos")]
+pub mod keychain;
+#[cfg(target_os = "macos")]
 pub mod probe;
 
 #[cfg(target_os = "macos")]
 pub use interfaces::MacosInterfaces;
+#[cfg(target_os = "macos")]
+pub use keychain::KeychainKeyring;
 #[cfg(target_os = "macos")]
 pub use probe::MacosProbe;
