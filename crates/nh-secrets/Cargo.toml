@@ -13,3 +13,12 @@ publish = false
 workspace = true
 
 [dependencies]
+# Secret<T> (zeroizing wrapper) + the domain error taxonomy.
+nh-types = { path = "../nh-types" }
+aes-gcm = { workspace = true }
+getrandom = { workspace = true }
+zeroize = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

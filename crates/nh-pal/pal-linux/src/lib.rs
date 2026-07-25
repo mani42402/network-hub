@@ -11,9 +11,13 @@
 #[cfg(target_os = "linux")]
 pub mod interfaces;
 #[cfg(target_os = "linux")]
+pub mod keychain;
+#[cfg(target_os = "linux")]
 pub mod probe;
 
 #[cfg(target_os = "linux")]
 pub use interfaces::LinuxInterfaces;
+#[cfg(target_os = "linux")]
+pub use keychain::SecretServiceKeyring;
 #[cfg(target_os = "linux")]
 pub use probe::LinuxProbe;

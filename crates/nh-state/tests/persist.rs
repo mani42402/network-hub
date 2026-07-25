@@ -168,7 +168,7 @@ async fn corruption_recovers_from_backup() {
         .await
         .unwrap();
     db.backup(3).await.unwrap();
-    db.close().await;
+    checkpoint_and_close(db).await;
 
     // Corrupt the live database by overwriting it with garbage.
     corrupt_file(&path);
@@ -199,7 +199,7 @@ async fn corruption_without_backup_starts_empty_but_comes_up() {
     let (db, _) = Database::open(&path).await.unwrap();
     db.settings().put("gone", &1u32).await.unwrap();
     // No backup taken.
-    db.close().await;
+    checkpoint_and_close(db).await;
     corrupt_file(&path);
 
     let (db, report) = Database::open(&path).await.unwrap();
@@ -236,28 +236,41 @@ async fn backups_rotate_to_the_keep_limit() {
     assert_eq!(backups, 2);
 }
 
+/// Fully checkpoints the WAL into the main database file, then closes the
+/// handle. After a `TRUNCATE` checkpoint the WAL is empty, so SQLite's deferred
+/// close (sqlx uses `sqlite3_close_v2`, which can finalize the connection *after*
+/// `pool.close().await` returns) has nothing to write back — it cannot "heal"
+/// the header that [`corrupt_file`] is about to overwrite. This is what makes an
+/// in-place overwrite deterministic across all three platforms.
+async fn checkpoint_and_close(db: Database) {
+    sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)")
+        .execute(db.pool())
+        .await
+        .expect("checkpoint before close");
+    db.close().await;
+}
+
 /// Replaces a database file with non-SQLite bytes so the next open sees
-/// corruption. The caller must `db.close().await` first.
+/// corruption. The caller must [`checkpoint_and_close`] the database first, which
+/// empties the WAL so no deferred checkpoint can restore the header.
 ///
-/// The file is fully removed and rewritten (not truncated in place), and synced
-/// to disk, so the corruption is deterministic even under heavy parallel test
-/// load — an in-place truncate can race the OS releasing the closed handle.
+/// The file is overwritten **in place**, not deleted. On Windows SQLite opens
+/// the database without `FILE_SHARE_DELETE`, so a `remove_file` while the
+/// deferred close still holds the handle fails with a sharing violation (os
+/// error 32) — but it *does* grant `FILE_SHARE_WRITE`, so truncating and
+/// rewriting the file is permitted even before that handle is released. On Unix
+/// both approaches work; in place is simply the portable one. Because
+/// `checkpoint_and_close` left the WAL empty, a late checkpoint can no longer
+/// heal the header (the "got Healthy" flake).
 fn corrupt_file(path: &std::path::Path) {
     use std::io::{Read, Write};
 
-    // Corrupt the database by deleting it and recreating it as garbage.
-    //
-    // Delete-and-recreate (rather than an in-place overwrite) is load-bearing: it
-    // gives the garbage file a *fresh inode*, so a late WAL checkpoint from
-    // SQLite's deferred close (sqlx uses `sqlite3_close_v2`, which can finalize
-    // the connection after `pool.close().await` returns) writes its pages back
-    // into the *old, orphaned* inode and cannot restore our garbage. An in-place
-    // overwrite flaked with "got Healthy" when such a checkpoint raced it — on
-    // Linux and Windows alike.
-    //
-    // The WAL/SHM siblings still exist here (the deferred close has not deleted
-    // them yet); remove them best-effort so a fresh open cannot replay them.
     const GARBAGE: &[u8] = b"this is not a sqlite database, it is garbage bytes not a header";
+
+    // Remove the WAL/SHM siblings best-effort so a fresh open cannot replay them.
+    // They are already empty after the truncate checkpoint; if the deferred close
+    // still holds them on Windows, SQLite deletes them when it finally closes —
+    // either way nothing is left to replay.
     let sibling = |ext: &str| {
         path.with_file_name(format!(
             "{}{ext}",
@@ -268,29 +281,32 @@ fn corrupt_file(path: &std::path::Path) {
         let _ = std::fs::remove_file(sibling(ext));
     }
 
-    // On Linux the unlink succeeds immediately even while the closing worker
-    // still holds the fd (the name is freed, the inode orphaned). On Windows the
-    // delete blocks until that deferred close releases the handle, so retry with
-    // a generous deadline.
-    let deadline = std::time::Instant::now() + std::time::Duration::from_mins(1);
+    // Overwrite in place. A write open is never blocked by SQLite's own handle
+    // (it grants share-write); only a transient holder such as a virus scanner or
+    // the search indexer momentarily touching the freshly-written file can fail
+    // it, so retry briefly.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     loop {
-        match std::fs::remove_file(path) {
-            Ok(()) => break,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => break,
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+        {
+            Ok(mut f) => {
+                f.write_all(GARBAGE).unwrap();
+                f.sync_all().unwrap();
+                break;
+            }
             Err(e) => {
                 assert!(
                     std::time::Instant::now() < deadline,
-                    "could not delete config.db to corrupt it within 60s of close: {e}"
+                    "could not open config.db to corrupt it within 30s: {e}"
                 );
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
         }
     }
-
-    let mut f = std::fs::File::create(path).unwrap();
-    f.write_all(GARBAGE).unwrap();
-    f.sync_all().unwrap();
-    drop(f);
 
     // Verify the corruption landed: the header must not be the SQLite magic.
     let mut head = [0u8; 16];

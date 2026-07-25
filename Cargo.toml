@@ -102,6 +102,9 @@ sqlx = { version = "0.8", default-features = false, features = [
 ] }
 # BLAKE3 for the audit log's tamper-evident hash chain (§10.4).
 blake3 = "1"
+# Base64 for WireGuard key validation (keys are base64-encoded 32-byte Curve25519
+# material) and OpenVPN inline-block handling. RustCrypto-adjacent, permissive.
+base64 = "0.22"
 # Regex: the belt-and-braces log redaction scrub (§15), behind the compile-time
 # Secret<T> guarantee. Also the eventual home for network-facing parsers.
 regex = "1"
@@ -113,6 +116,12 @@ zeroize = { version = "1", features = ["derive"] }
 trybuild = "1"
 # Temp files/dirs for tests that need a real on-disk SQLite database.
 tempfile = "3"
+# Authenticated encryption for secret blobs (VPN keys, passphrases) so they can
+# be stored outside the OS keychain (e.g. in config.db) without exposing them —
+# AES-256-GCM, RustCrypto (nh-secrets, WP-M1.1, §7.1). Permissive licence.
+aes-gcm = "0.10"
+# The system CSPRNG for master keys and nonces. Permissive licence.
+getrandom = "0.2"
 
 # ---------------------------------------------------------------------------
 # Lints. CI runs clippy with `-D warnings`, so every "warn" below is a hard
