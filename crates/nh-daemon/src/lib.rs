@@ -14,6 +14,7 @@ pub mod capabilities;
 pub mod child;
 pub mod cleanup;
 pub mod ipc;
+pub mod keyring;
 pub mod lifecycle;
 pub mod logging;
 pub mod principal;

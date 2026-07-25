@@ -20,6 +20,9 @@ nh-proto = { path = "../nh-proto" }
 nh-state = { path = "../nh-state", features = ["persist"] }
 # The capability-probe framework (AD-6); the per-OS backends are wired below.
 nh-pal = { path = "../nh-pal" }
+# The Keyring/SecretStore surface (AD-10, §7.1); the per-OS keychain backends
+# (DpapiKeyring / KeychainKeyring / SecretServiceKeyring) are wired below.
+nh-secrets = { path = "../nh-secrets" }
 
 async-trait = { workspace = true }
 clap = { workspace = true }

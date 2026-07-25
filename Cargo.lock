@@ -1224,6 +1224,7 @@ dependencies = [
  "hyper-util",
  "nh-pal",
  "nh-proto",
+ "nh-secrets",
  "nh-state",
  "nh-types",
  "nix",
