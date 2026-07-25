@@ -23,11 +23,15 @@ pub mod interfaces;
 #[cfg(windows)]
 pub mod ipc;
 #[cfg(windows)]
+pub mod keychain;
+#[cfg(windows)]
 pub mod probe;
 #[cfg(windows)]
 pub mod service;
 
 #[cfg(windows)]
 pub use interfaces::WindowsInterfaces;
+#[cfg(windows)]
+pub use keychain::DpapiKeyring;
 #[cfg(windows)]
 pub use probe::WindowsProbe;
