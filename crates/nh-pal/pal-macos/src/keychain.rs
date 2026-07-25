@@ -77,7 +77,11 @@ impl KeychainKeyring {
 
 impl Keyring for KeychainKeyring {
     fn get(&self, entry: &str) -> SecretsResult<Option<Vec<u8>>> {
-        match find_generic_password(Some(std::slice::from_ref(&self.keychain)), &self.service, entry) {
+        match find_generic_password(
+            Some(std::slice::from_ref(&self.keychain)),
+            &self.service,
+            entry,
+        ) {
             Ok((password, _item)) => Ok(Some(password.as_ref().to_vec())),
             Err(e) if e.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(None),
             Err(e) => Err(map_err(e)),
@@ -87,7 +91,11 @@ impl Keyring for KeychainKeyring {
     fn set(&self, entry: &str, value: &[u8]) -> SecretsResult<()> {
         // Update in place if the item exists, otherwise add it — the keychain
         // rejects a duplicate add.
-        match find_generic_password(Some(std::slice::from_ref(&self.keychain)), &self.service, entry) {
+        match find_generic_password(
+            Some(std::slice::from_ref(&self.keychain)),
+            &self.service,
+            entry,
+        ) {
             Ok((_password, mut item)) => {
                 item.set_password(value).map_err(map_err)?;
                 Ok(())
@@ -101,7 +109,11 @@ impl Keyring for KeychainKeyring {
     }
 
     fn delete(&self, entry: &str) -> SecretsResult<()> {
-        match find_generic_password(Some(std::slice::from_ref(&self.keychain)), &self.service, entry) {
+        match find_generic_password(
+            Some(std::slice::from_ref(&self.keychain)),
+            &self.service,
+            entry,
+        ) {
             Ok((_password, item)) => {
                 item.delete();
                 Ok(())
