@@ -95,7 +95,7 @@ fastrand = "2"
 # SQLite persistence (config.db, ADR-0010). The bundled feature vendors SQLite,
 # so builds are hermetic on all three OSes — no system libsqlite3, same lesson
 # as vendoring protoc. Runtime queries only (no compile-time DATABASE_URL).
-sqlx = { version = "0.8", default-features = false, features = [
+sqlx = { version = "0.9", default-features = false, features = [
     "runtime-tokio",
     "sqlite",
     "macros",
