@@ -41,7 +41,7 @@ tracing-subscriber = { workspace = true }
 [target.'cfg(unix)'.dependencies]
 # signal/process: child process-group kill; fs: the singleton flock; user: getuid
 # for the default principal resolver.
-nix = { version = "0.29", features = ["signal", "process", "fs", "user"] }
+nix = { version = "0.31", features = ["signal", "process", "fs", "user"] }
 
 # The concrete PAL backends: the composition root selects one per target OS to
 # gather capability facts (and, on Windows, the IPC transport + SCM service).

@@ -35,7 +35,7 @@ dbg_macro = "warn"
 nh-pal = { path = ".." }
 nh-types = { path = "../../nh-types" }
 async-trait = { workspace = true }
-nix = { version = "0.29", features = ["net", "feature", "user"] }
+nix = { version = "0.31", features = ["net", "feature", "user"] }
 # The M0.9 InterfaceInfo backend: getifaddrs (addresses/MAC/flags), the
 # NET_RT_IFLIST2 sysctl (64-bit counters), and a PF_ROUTE socket (change
 # watcher). All via raw FFI, which is why this crate is a designated boundary.
