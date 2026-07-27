@@ -37,7 +37,7 @@ nh-types = { path = "../../nh-types" }
 async-trait = { workspace = true }
 # net: getifaddrs (probe); socket: the RTNETLINK change-watch socket. feature:
 # uname. user: euid.
-nix = { version = "0.29", features = ["net", "socket", "feature", "user"] }
+nix = { version = "0.31", features = ["net", "socket", "feature", "user"] }
 # getifaddrs address extraction for the M0.9 InterfaceInfo backend; /sys and
 # /proc cover kind, MAC, link state, and counters.
 libc = "0.2"
