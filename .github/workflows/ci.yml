@@ -237,7 +237,7 @@ jobs:
       # matching regeneration cannot merge.
       - name: Set up Dart
         if: steps.check.outputs.present == 'true'
-        uses: dart-lang/setup-dart@v1
+        uses: dart-lang/setup-dart@v1.7.2
 
       - name: Set up Node
         if: steps.check.outputs.present == 'true'
